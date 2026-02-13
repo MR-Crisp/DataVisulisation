@@ -4,11 +4,11 @@ from sklearn.datasets import make_blobs
 
 X, y = make_blobs(n_samples=500, n_features=2, centers=3, random_state = 23)
 
-fig =  plt.figure(0)
-plt.grid(True)
-plt.scatter(X[:,0], X[:,1], c=y, s=50, edgecolor='k', cmap='viridis')
-plt.title('Generated Data')
-plt.show()
+# fig =  plt.figure(0)
+# plt.grid(True)
+# plt.scatter(X[:,0], X[:,1], c=y, s=50, edgecolor='k', cmap='viridis')
+# plt.title('Generated Data')
+# plt.show()
 
 k=3
 
@@ -23,3 +23,13 @@ for i in range(k):
     }
     clusters[i] = cluster
 print(clusters)
+
+plt.scatter(X[:,0], X[:,1], c=y, s=50, edgecolor='k', cmap='viridis')
+plt.grid(True)
+for i in clusters:
+    center = clusters[i]['center']
+    plt.scatter(center[0],center[1],marker = 'x',c = 'red')
+plt.show()
+
+def distance(p1,p2):
+    return np.sqrt(np.sum((p1-p2)**2))
