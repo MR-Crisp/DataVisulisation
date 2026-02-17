@@ -33,3 +33,26 @@ plt.show()
 
 def distance(p1,p2):
     return np.sqrt(np.sum((p1-p2)**2))
+
+def assign_clusters(X, clusters):
+    for idx in range(X.shape[0]):
+        dist = []
+        
+        curr_x = X[idx]
+        
+        for i in range(k):
+            dis = distance(curr_x,clusters[i]['center'])
+            dist.append(dis)
+        curr_cluster = np.argmin(dist)
+        clusters[curr_cluster]['points'].append(curr_x)
+    return clusters
+
+def update_clusters(X, clusters):
+    for i in range(k):
+        points = np.array(clusters[i]['points'])
+        if points.shape[0] > 0:
+            new_center = points.mean(axis =0)
+            clusters[i]['center'] = new_center
+            
+            clusters[i]['points'] = []
+    return clusters
