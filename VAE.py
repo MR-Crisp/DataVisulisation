@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 class VariationalAutoencoder(nn.Module):
-    def __init__(self, input_dim, hidden_dim, latent_dim):
+    def __init__(self, input_dim = 4, hidden_dim = 32, latent_dim = 2):#-----important the number WILL need to change, only done this for the current dataset
         super().__init__()
         self.encoder = nn.Sequential(nn.Linear(input_dim, hidden_dim),nn.ReLU())#chaining input and hidden layers together
         #nn.Relu is the activation function
