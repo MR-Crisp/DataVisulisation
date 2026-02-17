@@ -1,4 +1,5 @@
 import pandas as pd
+import torch
 
 class StaticDataset:
     def __init__(self):
@@ -32,3 +33,9 @@ D = StaticDataset()
 D.input_dataset(testset)
 D.clean_dataset()
 print(D.df.shape)
+
+
+def train_vae(model, train_loader, epochs=100, lr=1e-3):
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    model.train()
+    pass
