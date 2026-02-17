@@ -1,4 +1,12 @@
 import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
+from sklearn.mixture import GaussianMixture
+from VAE import VariationalAutoencoder
 
 class StaticDataset:
     def __init__(self):
@@ -32,3 +40,29 @@ D = StaticDataset()
 D.input_dataset(testset)
 D.clean_dataset()
 print(D.df.shape)
+
+
+def train_vae(model, train_loader, epochs=100, lr=0.001):
+    optimiser = optim.Adam(model.parameters(), lr=lr)
+    model.train()
+    
+    for epoch in range(epochs):
+        total_loss = 0
+        for batch_idx, (data,) in enumerate(train_loader):
+            optimiser.zero_grad()
+            
+            # Forward pass using YOUR VAE's forward method
+            recon_batch, mu, logvar = model(data)
+            
+            # VAE Loss
+            recon_loss = nn.MSELoss(reduction='sum')(recon_batch, data)
+            kl_loss = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+            loss = recon_loss + kl_loss
+            
+            loss.backward()
+            optimiser.step()
+            total_loss += loss.item()
+        
+        if epoch % 20 == 0:
+            print(f'Epoch {epoch}: Loss = {total_loss/len(train_loader.dataset):.4f}')
+
