@@ -56,3 +56,22 @@ def update_clusters(X, clusters):
             
             clusters[i]['points'] = []
     return clusters
+
+def pred_cluster(X, clusters):
+    pred = []
+    for i in range(X.shape[0]):
+        dist = []
+        for j in range(k):
+            dist.append(distance(X[i],clusters[j]['center']))
+        pred.append(np.argmin(dist))
+    return pred
+
+clusters = assign_clusters(X,clusters)
+clusters = update_clusters(X,clusters)
+pred = pred_cluster(X,clusters)
+
+plt.scatter(X[:,0],X[:,1],c = pred)
+for i in clusters:
+    center = clusters[i]['center']
+    plt.scatter(center[0],center[1],marker = '^',c = 'red')
+plt.show()
