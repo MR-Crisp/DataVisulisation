@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.mixture import GaussianMixture
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 import pandas as pd
 #from my files
 
@@ -18,16 +18,14 @@ from GMM_bic import GMM
 class StaticDataset:
     def __init__(self):
         self.df = None
+        self.scaler = StandardScaler()
 
-    def input_dataset(self,location):
+    def input_covertype_dataset(self,location):
         df = pd.read_csv(location)
         self.df = df
-        # print(df.head())
-        # print(df.columns)
-        # print(df.shape)
         print(df.isnull().sum())
 
-    def clean_dataset(self):
+    def clean_covertype_dataset(self):
         df = self.df.copy()
 
         #Remove unnamed/index columns
@@ -49,11 +47,31 @@ class StaticDataset:
         self.df = df
 
 
+    def normalise_covertype_data(self):
+        #Seperate features and target if needed
+        if 'Cover_Type' in self.df.columns:
+            features = self.df.drop('Cover_Type', axis=1)
+            target = self.df['Cover_Type']
+
+            #Normalise features
+            normalised_features = self.scalar.fit_transform(features)
+
+            #Combine normalised features with target
+            self.df = pd.DataFrame(normalised_features, columns=features.columns)
+            self.df['Cover_Type'] = target.values
+        else:
+            #Normalise all data if no target column
+            self.df = pd.DataFrame(self.scaler.fit_transform(self.df), columns=self.df.columns)
+
+        return self.df
+
+
 testset = "./covertype.csv"
 
 D = StaticDataset()
-D.input_dataset(testset)
-D.clean_dataset()
+D.input_covertype_dataset(testset)
+D.clean_covertype_dataset()
+D.normalise_covertype_data()
 print(D.df.shape)
 
 
