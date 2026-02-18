@@ -48,21 +48,19 @@ def train_vae(model, train_loader, epochs=100, lr=0.001):
     
     for epoch in range(epochs):
         total_loss = 0
-        for batch_idx, (data,) in enumerate(train_loader):
-            optimiser.zero_grad()
+        for batch_idx, (data,) in enumerate(train_loader):#for every epoch, go through the batch and optimise weights
+            optimiser.zero_grad()#optimiser
+            recon_batch, mu, logvar = model(data)#forward pass
             
-            # Forward pass using YOUR VAE's forward method
-            recon_batch, mu, logvar = model(data)
+            # VAE Loss using mean square error
+            recon_loss = nn.MSELoss(reduction='sum')(recon_batch, data)#loss of input vs output (encoder)
+            kl_loss = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())#comparing variance vs normal distribution N(0,1)
+            loss = recon_loss + kl_loss#total loss
             
-            # VAE Loss
-            recon_loss = nn.MSELoss(reduction='sum')(recon_batch, data)
-            kl_loss = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
-            loss = recon_loss + kl_loss
-            
-            loss.backward()
-            optimiser.step()
-            total_loss += loss.item()
+            loss.backward()#backwards pass
+            optimiser.step()#next
+            total_loss += loss.item()#updating the loss
         
-        if epoch % 20 == 0:
-            print(f'Epoch {epoch}: Loss = {total_loss/len(train_loader.dataset):.4f}')
+        if epoch % 20 == 0:#for every 20 epochs
+            print(f'Epoch {epoch}: Loss = {total_loss/len(train_loader.dataset):.4f}')# print loss
 
