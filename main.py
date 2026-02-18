@@ -29,16 +29,24 @@ class StaticDataset:
 
     def clean_dataset(self):
         df = self.df.copy()
-        #remove all empty row/col
-        df = df.dropna(how='all',axis=0)
-        df = df.dropna(how='all',axis=1)
-        #remove duplicate records
+
+        #Remove unnamed/index columns
+        unnamed_cols = [col for col in df.columns if 'unnamed' in col.lower() or 'index' in col.lower()]
+        if unnamed_cols:
+            df = df.drop(columns=unnamed_cols)
+        
+        #Remove all empty row/columns
+        df = df.dropna(how='all', axis=0)  # Drop rows
+        df = df.dropna(how='all', axis=1)  # Drop columns
+
+        #Remove duplicates
         df = df.drop_duplicates()
-        # Drop rows where >50% of values are missing
+
+        #Drop rows where >50% of values are missing
         threshold = len(df.columns) * 0.5
         df = df.dropna(thresh=threshold, axis=0)
+
         self.df = df
-        print(df.isnull().sum())
 
 
 testset = "./covertype.csv"
