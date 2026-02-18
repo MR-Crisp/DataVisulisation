@@ -41,7 +41,7 @@ class StaticDataset:
         print(df.isnull().sum())
 
 
-testset = "./taxi_zone_lookup.csv"
+testset = "./covertype.csv"
 
 D = StaticDataset()
 D.input_dataset(testset)
@@ -72,7 +72,7 @@ def train_vae(model, train_loader, epochs=100, lr=0.001):
             print(f'Epoch {epoch}: Loss = {total_loss/len(train_loader.dataset):.4f}')# print loss
 
 
-def prepare_taxi_data(df):
+def prepare_data(df):
     # Drop columns that are not useful for clustering
     drop_cols = [
         'tpep_pickup_datetime', 'tpep_dropoff_datetime',  # raw timestamps
@@ -96,9 +96,10 @@ def get_tensor(df):
     X_tensor = torch.tensor(X)
     return X_tensor
 
-df = pd.read_csv('taxi_zone_lookup.csv')
+df = pd.read_csv('./covertype.csv')
 
-df_clean = prepare_taxi_data(df)
+# df_clean = prepare_data(df)
+df_clean = df.dropna()#drop rows with nulls
 
 X_tensor = get_tensor(df_clean)
 dataset = TensorDataset(X_tensor)
