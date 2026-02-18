@@ -123,6 +123,9 @@ def get_tensor(df):
 
 #Use normalised data
 X_tensor = get_tensor(D.df)
+sample_size = int(0.1 * len(X_tensor))  # Use 10% of the data for training
+X_tensor = X_tensor[:sample_size]  # Take the first 10% of the data for training
+
 dataset = TensorDataset(X_tensor)
 train_loader = DataLoader(dataset, batch_size=512, shuffle=True)
 
@@ -133,7 +136,7 @@ else:
     input_dim = D.df.shape[1]
 
 vae = VariationalAutoencoder(input_dim=input_dim, hidden_dim=64, latent_dim=2)
-train_vae(vae,train_loader,500, lr=0.001)
+train_vae(vae,train_loader,200, lr=0.01)
 vae.eval()#eval inherited from nn module
 with torch.no_grad():
     if 'Cover_Type' in D.df.columns:
