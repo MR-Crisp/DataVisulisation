@@ -23,7 +23,7 @@ class StaticDataset:
     def input_covertype_dataset(self,location):
         df = pd.read_csv(location)
         self.df = df
-        print(df.isnull().sum())
+        # print(df.isnull().sum())
 
     def clean_covertype_dataset(self):
         df = self.df.copy()
@@ -54,7 +54,7 @@ class StaticDataset:
             target = self.df['Cover_Type']
 
             #Normalise features
-            normalised_features = self.scalar.fit_transform(features)
+            normalised_features = self.scaler.fit_transform(features)
 
             #Combine normalised features with target
             self.df = pd.DataFrame(normalised_features, columns=features.columns)
@@ -110,47 +110,40 @@ def train_vae(model, train_loader, epochs=100, lr=0.001):
 
             print(f'Epoch {epoch}: Total loss = {avg_loss:.4f}, Recon Loss = {avg_recon_loss:.4f}, KL Loss = {avg_kl_loss:.4f}')
 
-
-def prepare_data(df):
-    # Drop columns that are not useful for clustering
-    drop_cols = [
-        'tpep_pickup_datetime', 'tpep_dropoff_datetime',  # raw timestamps
-        'extra', 'mta_tax', 'improvement_surcharge',       # fixed fee columns, low signal
-    ]
-    df = df.drop(columns=[col for col in drop_cols if col in df.columns])
-
-    # Drop rows with nulls
-    df = df.dropna()
-
-    # Label encode categorical columns
-    categorical_cols = df.select_dtypes(include=['object', 'category']).columns
-    le = LabelEncoder()
-    for col in categorical_cols:
-        df[col] = le.fit_transform(df[col])
-
-    return df
-
 def get_tensor(df):
-    X = df.values.astype('float32')
+    #Drop target column if exists
+    if 'Cover_Type' in df.columns:
+        X = df.drop('Cover_Type', axis=1).values.astype('float32')
+    else:
+        X = df.values.astype('float32')
     X_tensor = torch.tensor(X)
     return X_tensor
 
-df = pd.read_csv('./covertype.csv')
 
-# df_clean = prepare_data(df)
-df_clean = df.dropna()#drop rows with nulls
 
-X_tensor = get_tensor(df_clean)
+#Use normalised data
+X_tensor = get_tensor(D.df)
 dataset = TensorDataset(X_tensor)
-train_loader = DataLoader(dataset, batch_size=32, shuffle=True)
+train_loader = DataLoader(dataset, batch_size=512, shuffle=True)
 
-input_dim = df_clean.shape[1]
-vae = VariationalAutoencoder(input_dim=input_dim, hidden_dim=32, latent_dim=2)
-train_vae(vae,train_loader,500, lr=0.01)
+#Get input dimension for VAE
+if 'Cover_Type' in D.df.columns:
+    input_dim = D.df.shape[1] - 1
+else:
+    input_dim = D.df.shape[1]
+
+vae = VariationalAutoencoder(input_dim=input_dim, hidden_dim=64, latent_dim=2)
+train_vae(vae,train_loader,500, lr=0.001)
 vae.eval()#eval inherited from nn module
-with torch.no_grad():#lets me speed things up
+with torch.no_grad():
+    if 'Cover_Type' in D.df.columns:
+        X_tensor = X_tensor[:, :-1]  # Remove the Cover_Type column if it exists
+    else:
+        X_tensor = X_tensor
     mu, logvar = vae.encode(X_tensor)
-latent_vectors = mu.numpy()
+    latent_vectors = mu.numpy()
+
+#Apply GMM clustering to the latent space
 gmm_model = GMM()
 labels, gmm = gmm_model.GMM_calc(latent_vectors)
 gmm_model.visual(latent_vectors,labels, gmm)
