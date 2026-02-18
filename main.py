@@ -1,4 +1,3 @@
-import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
@@ -6,7 +5,15 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.mixture import GaussianMixture
+from sklearn.preprocessing import LabelEncoder
+import pandas as pd
+#from my files
+
 from VAE import VariationalAutoencoder
+from GMM_bic import GMM
+
+
+
 
 class StaticDataset:
     def __init__(self):
@@ -64,3 +71,46 @@ def train_vae(model, train_loader, epochs=100, lr=0.001):
         if epoch % 20 == 0:#for every 20 epochs
             print(f'Epoch {epoch}: Loss = {total_loss/len(train_loader.dataset):.4f}')# print loss
 
+
+def prepare_taxi_data(df):
+    # Drop columns that are not useful for clustering
+    drop_cols = [
+        'tpep_pickup_datetime', 'tpep_dropoff_datetime',  # raw timestamps
+        'extra', 'mta_tax', 'improvement_surcharge',       # fixed fee columns, low signal
+    ]
+    df = df.drop(columns=[col for col in drop_cols if col in df.columns])
+
+    # Drop rows with nulls
+    df = df.dropna()
+
+    # Label encode categorical columns
+    categorical_cols = df.select_dtypes(include=['object', 'category']).columns
+    le = LabelEncoder()
+    for col in categorical_cols:
+        df[col] = le.fit_transform(df[col])
+
+    return df
+
+def get_tensor(df):
+    X = df.values.astype('float32')
+    X_tensor = torch.tensor(X)
+    return X_tensor
+
+df = pd.read_csv('taxi_zone_lookup.csv')
+
+df_clean = prepare_taxi_data(df)
+
+X_tensor = get_tensor(df_clean)
+dataset = TensorDataset(X_tensor)
+train_loader = DataLoader(dataset, batch_size=32, shuffle=True)
+
+input_dim = df_clean.shape[1]
+vae = VariationalAutoencoder(input_dim=input_dim, hidden_dim=32, latent_dim=2)
+train_vae(vae,train_loader,500, lr=0.01)
+vae.eval()#eval inherited from nn module
+with torch.no_grad():#lets me speed things up
+    mu, logvar = vae.encode(X_tensor)
+latent_vectors = mu.numpy()
+gmm_model = GMM()
+labels, gmm = gmm_model.GMM_calc(latent_vectors)
+gmm_model.visual(latent_vectors,labels, gmm)
