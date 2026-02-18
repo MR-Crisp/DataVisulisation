@@ -81,6 +81,9 @@ def train_vae(model, train_loader, epochs=100, lr=0.001):
     
     for epoch in range(epochs):
         total_loss = 0
+        total_recon_loss = 0
+        total_kl_loss = 0
+
         for batch_idx, (data,) in enumerate(train_loader):#for every epoch, go through the batch and optimise weights
             optimiser.zero_grad()#optimiser
             recon_batch, mu, logvar = model(data)#forward pass
@@ -88,14 +91,24 @@ def train_vae(model, train_loader, epochs=100, lr=0.001):
             # VAE Loss using mean square error
             recon_loss = nn.MSELoss(reduction='sum')(recon_batch, data)#loss of input vs output (encoder)
             kl_loss = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())#comparing variance vs normal distribution N(0,1)
-            loss = recon_loss + kl_loss#total loss
+            
+            beta = 0.1 #Beta-VAE approach to balance reconstruction and KL divergence
+            loss = recon_loss + beta * kl_loss#total loss
             
             loss.backward()#backwards pass
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)#gradient clipping to prevent exploding gradients
             optimiser.step()#next
-            total_loss += loss.item()#updating the loss
+            #Updating the loss
+            total_loss += loss.item()
+            total_recon_loss += recon_loss.item()
+            total_kl_loss += kl_loss.item()
         
         if epoch % 20 == 0:#for every 20 epochs
-            print(f'Epoch {epoch}: Loss = {total_loss/len(train_loader.dataset):.4f}')# print loss
+            avg_loss = total_loss / len(train_loader.dataset)
+            avg_recon_loss = total_recon_loss / len(train_loader.dataset)
+            avg_kl_loss = total_kl_loss / len(train_loader.dataset)
+
+            print(f'Epoch {epoch}: Total loss = {avg_loss:.4f}, Recon Loss = {avg_recon_loss:.4f}, KL Loss = {avg_kl_loss:.4f}')
 
 
 def prepare_data(df):
