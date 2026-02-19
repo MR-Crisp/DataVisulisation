@@ -7,6 +7,8 @@ from torch.utils.data import DataLoader, TensorDataset
 from sklearn.mixture import GaussianMixture
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 import pandas as pd
+import kagglehub
+from kagglehub import KaggleDatasetAdapter
 #from my files
 
 from VAE import VariationalAutoencoder
@@ -21,7 +23,7 @@ class StaticDataset:
         self.scaler = StandardScaler()
 
     def input_covertype_dataset(self,location):
-        df = pd.read_csv(location)
+        df = location
         self.df = df
 
     def clean_covertype_dataset(self):
@@ -64,8 +66,13 @@ class StaticDataset:
 
         return self.df
 
+file_path = "./covertype.csv"
+testset = kagglehub.load_dataset(
+  KaggleDatasetAdapter.PANDAS,
+  "zsinghrahulk/covertype-forest-cover-types",
+  file_path
+)
 
-testset = "./covertype.csv"
 
 D = StaticDataset()
 D.input_covertype_dataset(testset)
