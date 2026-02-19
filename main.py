@@ -131,7 +131,7 @@ train_loader = DataLoader(dataset, batch_size=512, shuffle=True)
 #Get input dimension for VAE
 input_dim = X_tensor.shape[1]
 
-vae = VariationalAutoencoder(input_dim=input_dim, hidden_dim=128, latent_dim=2)
+vae = VariationalAutoencoder(input_dim=input_dim, hidden_dim=128, latent_dim=3)
 train_vae(vae,train_loader,200, lr=0.001)
 
 vae.eval()#eval inherited from nn module
