@@ -24,12 +24,15 @@ class GMM():
         return labels,gmm
 
     def visual(self,X,labels,gmm):
-        plt.figure(figsize=(8, 6))
-        plt.scatter(X[:, 0], X[:, 1], c=labels, cmap='viridis', s=50, edgecolor='k')
-        plt.scatter(gmm.means_[:, 0], gmm.means_[:, 1], c='red', marker='X', s=300, label='Centroids')
-        plt.title('Gaussian Mixture Model Clustering')
-        plt.xlabel('Feature 1')
-        plt.ylabel('Feature 2')
-        plt.grid(True)
-        plt.legend()
+        plt.figure(figsize=(10, 8))
+        ax = fig.add_subplot(111, projection='3d')
+        ax.scatter(X[:, 0], X[:, 1], X[:, 2], c=labels, cmap='viridis', s=50, edgecolor='k')
+        ax.scatter(gmm.means_[:, 0], gmm.means_[:, 1], gmm.means_[:, 2],
+                   c='red', marker='X', s=300, label='Centroids')
+
+        ax.set_title('Gaussian Mixture Model Clustering')
+        ax.set_xlabel('Latent Dim 1')
+        ax.set_ylabel('Latent Dim 2')
+        ax.set_zlabel('Latent Dim 3')
+        ax.legend()
         plt.show()
