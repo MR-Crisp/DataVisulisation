@@ -25,7 +25,7 @@ class GMM():
 
     def visual(self,X,labels,gmm):
         plt.figure(figsize=(10, 8))
-        ax = fig.add_subplot(111, projection='3d')
+        ax = plt.figure().add_subplot(111, projection='3d')
         ax.scatter(X[:, 0], X[:, 1], X[:, 2], c=labels, cmap='viridis', s=50, edgecolor='k')
         ax.scatter(gmm.means_[:, 0], gmm.means_[:, 1], gmm.means_[:, 2],
                    c='red', marker='X', s=300, label='Centroids')
