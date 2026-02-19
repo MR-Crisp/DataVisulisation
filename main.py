@@ -23,7 +23,6 @@ class StaticDataset:
     def input_covertype_dataset(self,location):
         df = pd.read_csv(location)
         self.df = df
-        # print(df.isnull().sum())
 
     def clean_covertype_dataset(self):
         df = self.df.copy()
