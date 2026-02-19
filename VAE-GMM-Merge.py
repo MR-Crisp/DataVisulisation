@@ -42,23 +42,23 @@ class VariationalAutoencoder(nn.Module):
         return recon_loss + kl_loss
 
 
-    def train(self, model, X_tensor, epochs=200, lr=1e-3):
-        optimiser = torch.optim.Adam(model.parameters(), lr=lr) # Use Adam optimiser to adjust leanrning rate
-        model.train()
+    def train(self, X_tensor, epochs=200, lr=1e-3):
+        optimiser = torch.optim.Adam(self.parameters(), lr=lr) # Use Adam optimiser to adjust leanrning rate
+        self.train()
         for epoch in range(epochs): 
             optimiser.zero_grad() # Clear gradients before backpropagation
-            recon, mu, logvar = model(X_tensor) # Forward pass
-            loss = model.loss(recon, X_tensor, mu, logvar) # Calculate loss
+            recon, mu, logvar = self(X_tensor) # Forward pass
+            loss = self.loss(recon, X_tensor, mu, logvar) # Calculate loss
             loss.backward() # Backpropagation to compute gradients
             optimiser.step() # Update model parameters
 
             if (epoch+1) % 50 == 0:
                 print(f'Epoch [{epoch+1}/{epochs}], Loss: {loss.item():.3f}') #Output loss every 50 epochs
 
-    def get_latent_representation(self, model, X_tensor):
-        model.eval()
+    def get_latent_representation(self, X_tensor):
+        self.eval()
         with torch.no_grad():
-            mu, logvar = model.encode(X_tensor) # Get mean and log variance from encoder
+            mu, logvar = self.encode(X_tensor) # Get mean and log variance from encoder
         return mu.numpy() # Return the mean as the latent representation
 
 def calculate_bic(Z, max_clusters=10):
@@ -75,10 +75,10 @@ X_tensor = torch.FloatTensor(X) # Convert to PyTorch tensor
 
 #Train VAE model
 model = VariationalAutoencoder(input_dim=2, hidden_dim=32, latent_dim=2) # Initialize VAE model
-model.train_model(X_tensor,epoch=200)
+model.train(X_tensor, epochs=200)
 
 #Get Latent Vectors
-Z = model.get_latent(X_tensor)
+Z = model.get_latent_representation(X_tensor)
 
 # Calculate BIC values for 1optimal clusters
 bic_values = calculate_bic(Z, max_clusters=10)
