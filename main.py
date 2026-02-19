@@ -74,7 +74,7 @@ testset = kagglehub.load_dataset(
 )
 
 
-D = StaticDataset()
+D = StaticDataset()#needs to be fixed
 D.input_covertype_dataset(testset)
 D.clean_covertype_dataset()
 D.normalise_covertype_data()
