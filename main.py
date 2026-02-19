@@ -130,19 +130,13 @@ dataset = TensorDataset(X_tensor)
 train_loader = DataLoader(dataset, batch_size=512, shuffle=True)
 
 #Get input dimension for VAE
-if 'Cover_Type' in D.df.columns:
-    input_dim = D.df.shape[1] - 1
-else:
-    input_dim = D.df.shape[1]
+input_dim = X_tensor.shape[1]
 
 vae = VariationalAutoencoder(input_dim=input_dim, hidden_dim=64, latent_dim=2)
-train_vae(vae,train_loader,200, lr=0.01)
+train_vae(vae,train_loader,200, lr=0.001)
+
 vae.eval()#eval inherited from nn module
 with torch.no_grad():
-    if 'Cover_Type' in D.df.columns:
-        X_tensor = X_tensor[:, :-1]  # Remove the Cover_Type column if it exists
-    else:
-        X_tensor = X_tensor
     mu, logvar = vae.encode(X_tensor)
     latent_vectors = mu.numpy()
 
