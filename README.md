@@ -1,1 +1,3 @@
-For this project, I will be creating a data visulisation tool, that uses Unsupervised Nueral networks that will take static data sets and visulise it with colours and on a 3D scale
+For this project, I will be creating a data visulisation tool, that uses Unsupervised Nueral networks that will take static data sets and visulise it with colours and on a 3D scale.
+
+Plan
