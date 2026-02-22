@@ -1,5 +1,5 @@
-# 📊 Data Visualisation Project — Group D
-**Tama · Omar · Aamir · Khalood**
+# 📊 Data Visualisation Project 
+
 
 ---
 
@@ -72,50 +72,5 @@ Each output is rated 1–10 across four dimensions by multiple evaluators (peers
 
 **Scale:** 1–3 (poor) · 4–6 (adequate) · 6–8 (good) · 9–10 (excellent)
 
----
 
-## 🗂️ Project Structure
-
-```
-├── data/               # Raw and processed datasets
-├── pipeline/           # Data cleaning and ingestion scripts
-├── models/             # Dimensionality reduction & clustering modules
-├── visualisation/      # UI and visual output layer
-├── evaluation/         # Metrics and evaluation scripts
-└── docs/               # Report and documentation
-```
-
----
-
-## 🚀 Getting Started
-
-> Setup instructions will be added as the project develops.
-
-```bash
-# Clone the repository
-git clone <repo-url>
-cd <repo-name>
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run the application
-python main.py
-```
-
----
-
-## 📅 Progress & Reports
-
-Weekly progress reports and retrospective analysis are tracked in the appendices of the project report. Refer to the repository's commit history for a timeline of development activity.
-
-> ⚠️ A consistent commit history is maintained throughout the semester in line with project requirements.
-
----
-
-## 🤖 Generative AI Usage
-
-Details of any generative AI tools used during this project are documented in Appendix 3 of the full report.
-
----
 
