@@ -26,22 +26,18 @@ class GMM():
         return labels,gmm
 
     def visual(self,X,labels,gmm):
-        xs= X[:, 0]
+        xs = X[:, 0]
         ys = X[:, 1]
         zs = X[:, 2]
 
-        # creating figure
         fig = plt.figure()
-        ax = Axes3D(fig)
+        ax = fig.add_subplot(111, projection='3d')
 
-        # creating the plot
-        plot_geeks = ax.scatter(xs, ys, zs, color='green')
+        scatter = ax.scatter(xs, ys, zs, c=labels, cmap='viridis')
 
-        # setting title and labels
         ax.set_title("3D plot")
         ax.set_xlabel('x-axis')
         ax.set_ylabel('y-axis')
         ax.set_zlabel('z-axis')
 
-        # displaying the plot
         plt.show()
