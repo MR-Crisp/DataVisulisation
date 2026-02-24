@@ -33,7 +33,9 @@ class GMM():
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
 
-        scatter = ax.scatter(xs, ys, zs, c=labels, cmap='viridis')
+        ax.scatter(xs, ys, zs, c=labels, cmap='viridis')
+        ax.scatter(gmm.means_[:, 0], gmm.means_[:, 1], gmm.means_[:, 2],
+                   c='red', marker='X', s=300, label='Centroids')
 
         ax.set_title("3D plot")
         ax.set_xlabel('x-axis')
