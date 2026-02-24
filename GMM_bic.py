@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.mixture import GaussianMixture
-from sklearn.datasets import make_blobs
+from matplotlib.widgets import Slider
 # for creating a responsive plot
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -30,16 +30,38 @@ class GMM():
         ys = X[:, 1]
         zs = X[:, 2]
 
-        fig = plt.figure()
+        fig = plt.figure(figsize=(10, 8))
         ax = fig.add_subplot(111, projection='3d')
-
-        ax.scatter(xs, ys, zs, c=labels, cmap='viridis')
-        ax.scatter(gmm.means_[:, 0], gmm.means_[:, 1], gmm.means_[:, 2],
+        # Set initial view angle
+        init_azim = 0
+        init_elev = 30
+        
+        #Scatter plot
+        scatter = ax.scatter(xs, ys, zs, c=labels, cmap='viridis')
+        centroids = ax.scatter(gmm.means_[:, 0], gmm.means_[:, 1], gmm.means_[:, 2],
                    c='red', marker='X', s=300, label='Centroids')
 
+        # Set labels and title
         ax.set_title("3D plot")
         ax.set_xlabel('x-axis')
         ax.set_ylabel('y-axis')
         ax.set_zlabel('z-axis')
+        ax.legend()
+        # Set the initial view angle
+        ax.view_init(elev=init_elev, azim=init_azim)
+        # Create an animation by rotating the view
+        plt.subplots_adjust(bottom=0.25)
+        ax_azim = plt.axes([0.2, 0.1, 0.6, 0.03])
+        ax_elev = plt.axes([0.2, 0.05, 0.6, 0.03])
 
+        # Create sliders for azimuth and elevation
+        slider_azim = Slider(ax_azim, 'Azimuth', 0, 360, valinit=init_azim, valstep=1)
+        slider_elev = Slider(ax_elev, 'Elevation', 0, 360, valinit=init_elev, valstep=1)
+
+        def update(val):
+            ax.view_init(elev=slider_elev.val, azim=slider_azim.val)
+            fig.canvas.draw_idle()
+
+        slider_azim.on_changed(update)
+        slider_elev.on_changed(update)
         plt.show()
