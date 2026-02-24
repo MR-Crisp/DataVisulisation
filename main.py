@@ -67,10 +67,9 @@ class StaticDataset:
         return self.df
 
 
+file_path = "./covertype.csv"
 testset = kagglehub.load_dataset(
-  KaggleDatasetAdapter.PANDAS,"zsinghrahulk/covertype-forest-cover-types",
-  file_path = "./covertype.csv"
-)
+  KaggleDatasetAdapter.PANDAS,"zsinghrahulk/covertype-forest-cover-types",file_path)
 
 
 D = StaticDataset()#needs to be fixed

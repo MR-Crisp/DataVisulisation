@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.mixture import GaussianMixture
 from sklearn.datasets import make_blobs
+# for creating a responsive plot
+from mpl_toolkits.mplot3d import Axes3D
 
 class GMM():
     def __init__(self):
@@ -24,15 +26,22 @@ class GMM():
         return labels,gmm
 
     def visual(self,X,labels,gmm):
-        plt.figure(figsize=(10, 8))
-        ax = plt.figure().add_subplot(111, projection='3d')
-        ax.scatter(X[:, 0], X[:, 1], X[:, 2], c=labels, cmap='viridis', s=50, edgecolor='k')
-        ax.scatter(gmm.means_[:, 0], gmm.means_[:, 1], gmm.means_[:, 2],
-                   c='red', marker='X', s=300, label='Centroids')
+        xs= X[:, 0]
+        ys = X[:, 1]
+        zs = X[:, 2]
 
-        ax.set_title('Gaussian Mixture Model Clustering')
-        ax.set_xlabel('Latent Dim 1')
-        ax.set_ylabel('Latent Dim 2')
-        ax.set_zlabel('Latent Dim 3')
-        ax.legend()
+        # creating figure
+        fig = plt.figure()
+        ax = Axes3D(fig)
+
+        # creating the plot
+        plot_geeks = ax.scatter(xs, ys, zs, color='green')
+
+        # setting title and labels
+        ax.set_title("3D plot")
+        ax.set_xlabel('x-axis')
+        ax.set_ylabel('y-axis')
+        ax.set_zlabel('z-axis')
+
+        # displaying the plot
         plt.show()
