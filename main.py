@@ -67,10 +67,9 @@ class StaticDataset:
         return self.df
 
 
+file_path = "./covertype.csv"
 testset = kagglehub.load_dataset(
-  KaggleDatasetAdapter.PANDAS,"zsinghrahulk/covertype-forest-cover-types",
-  file_path = "./covertype.csv"
-)
+  KaggleDatasetAdapter.PANDAS,"zsinghrahulk/covertype-forest-cover-types",file_path)
 
 
 D = StaticDataset()#needs to be fixed
@@ -138,7 +137,7 @@ train_loader = DataLoader(dataset, batch_size=512, shuffle=True)
 input_dim = X_tensor.shape[1]
 
 vae = VariationalAutoencoder(input_dim=input_dim, hidden_dim=128, latent_dim=3)
-train_vae(vae,train_loader,200, lr=0.001)
+train_vae(vae,train_loader,60, lr=0.001)
 
 vae.eval()#eval inherited from nn module
 with torch.no_grad():
