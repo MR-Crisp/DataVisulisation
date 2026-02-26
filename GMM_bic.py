@@ -42,3 +42,29 @@ class GMM():
             hoverinfo='text',
             name='Data Points'
         ))
+        
+        fig.add_trace(go.Scatter(
+            x=gmm.means_[:, 0], 
+            y=gmm.means_[:, 1], 
+            mode='markers', 
+            marker=dict(
+                size=10,
+                color='red', 
+                symbol='x',
+                line=dict(width=2, color='black')
+            ),
+            text=[f'Centroid {i}' for i in range(len(gmm.means_))],
+            hoverinfo='text',
+            name='Centroids'
+        ))
+
+        fig.update_layout(
+            title='GMM Clustering of Latent Space',
+            xaxis_title='Latent Dimension 1',
+            yaxis_title='Latent Dimension 2',
+            zaxis_title='Latent Dimension 3',
+            legend_title='Legend',
+            width=900,
+            height=700
+        )
+        fig.show()
