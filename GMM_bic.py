@@ -25,25 +25,33 @@ class GMM():
         return labels,gmm
 
     def visual(self,X,labels,gmm):
+        x_coords = X[:, 0]
+        y_coords = X[:, 1]
+        z_coords = X[:, 2]
         fig = go.Figure()
-        fig.add_trace(go.Scatter(
-            x=X[:, 0], 
-            y=X[:, 1], 
+        fig.add_trace(go.Scatter3d(
+            x=x_coords,
+            y=y_coords,
+            z=z_coords,
             mode='markers', 
             marker=dict(
-                size=3,
+                size=4,
                 color=labels, 
                 colorscale='Viridis', 
                 opacity=0.8,
                 showscale=True,
-                colorbar=dict(title='Cluster')
+                colorbar=dict(
+                    title='Cluster',
+                    x=1.0,
+                    len=0.5
+                )
             ),
-            text=[f'Point {i}<br>Cluster: {labels[i]}' for i in range(len(labels))],
+            text=[f'Point {i}<br>Cluster: {labels[i]}<br>Coordinates: ({x_coords[i]:.3f}, {y_coords[i]:.3f}, {z_coords[i]:.3f})' for i in range(len(X))],
             hoverinfo='text',
             name='Data Points'
         ))
         
-        fig.add_trace(go.Scatter(
+        fig.add_trace(go.Scatter3d(
             x=gmm.means_[:, 0], 
             y=gmm.means_[:, 1], 
             mode='markers', 
@@ -59,12 +67,115 @@ class GMM():
         ))
 
         fig.update_layout(
-            title='GMM Clustering of Latent Space',
-            xaxis_title='Latent Dimension 1',
-            yaxis_title='Latent Dimension 2',
-            zaxis_title='Latent Dimension 3',
-            legend_title='Legend',
-            width=900,
-            height=700
+            title='3D GMM Clustering of Latent Space',
+            scene=dict(
+                xaxis_title='Latent Dimension 1',
+                yaxis_title='Latent Dimension 2',
+                zaxis_title='Latent Dimension 3',
+                xaxis=dict(
+                    showbackground=True,
+                    backgroundcolor='rgb(230, 230, 230)',
+                    gridcolor='white',
+                    showline=True,
+                    zerolinecolor='white',
+                ),
+                yaxis=dict(
+                    showbackground=True,
+                    backgroundcolor='rgb(230, 230, 230)',
+                    gridcolor='white',
+                    showline=True,
+                    zerolinecolor='white',
+                ),
+                zaxis=dict(
+                    showbackground=True,
+                    backgroundcolor='rgb(230, 230, 230)',
+                    gridcolor='white',
+                    showline=True,
+                    zerolinecolor='white',
+                ),
+                camera=dict(
+                    eye=dict(x=1.5, y=1.5, z=1.5),
+                    center=dict(x=0, y=0, z=0),
+                    up=dict(x=0, y=0, z=1)
+                ),
+                aspectmode='cube'
+            ),
+            width=1000,
+            height=800,
+            hovermode='closest',
+            showlegend=True,
+            legend=dict(
+                yanchor="top",
+                y=0.99,
+                xanchor="left",
+                x=0.01,
+                bgcolor='rgba(255, 255, 255, 0.8)'
+            ),
+            margin=dict(l=0, r=0, b=0, t=40)
         )
+
+        fig.update_layout(
+            updatemenus=[
+                dict(
+                    type="buttons",
+                    direction="right",
+                    active=0,
+                    x=0.5,
+                    y=1.1,
+                    buttons=list([
+                        dict(
+                        label="Default 3D",
+                        method="relayout",
+                        args=["scene.camera", dict(eye=dict(x=1.5, y=1.5, z=1.5))]
+                        ),
+                        dict(
+                            label="Top View",
+                            method="relayout",
+                            args=["scene.camera", dict(eye=dict(x=0, y=0, z=3))]
+                        ),
+                        dict(
+                            label="Side View (X)",
+                            method="relayout",
+                            args=["scene.camera", dict(eye=dict(x=3, y=0, z=0))]
+                        ),
+                        dict(
+                            label="Side View (Y)", 
+                            method="relayout",
+                            args=["scene.camera", dict(eye=dict(x=0, y=3, z=0))]
+                        ),
+                        dict(
+                            label="Rotate",
+                            method="animate",
+                            args=[None, dict(
+                                frame=dict(duration=50, redraw=True),
+                                fromcurrent=True,
+                                mode='immediate',
+                                transition=dict(duration=0)
+                            )]
+                        )
+                    ])
+                )
+            ]
+        )
+
+        def create_rotation_frames():
+            frames = []
+            for angle in range(0, 360, 5):
+                frames.append(go.Frame(
+                    layout=dict(
+                        scene=dict(
+                            camera=dict(
+                                eye=dict(
+                                    x=1.5 * np.cos(np.radians(angle)), 
+                                    y=1.5 * np.sin(np.radians(angle)), 
+                                    z=1
+                                )
+                            )
+                                
+                        )
+                    )
+                )) 
+            return frames
+
+        fig.frames = create_rotation_frames()
         fig.show()
