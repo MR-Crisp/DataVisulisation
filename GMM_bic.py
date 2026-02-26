@@ -1,9 +1,8 @@
 import numpy as np
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go
+import plotly.express as px
+from plotly.subplots import make_subplots
 from sklearn.mixture import GaussianMixture
-from matplotlib.widgets import Slider
-# for creating a responsive plot
-from mpl_toolkits.mplot3d import Axes3D
 
 class GMM():
     def __init__(self):
@@ -26,42 +25,20 @@ class GMM():
         return labels,gmm
 
     def visual(self,X,labels,gmm):
-        xs = X[:, 0]
-        ys = X[:, 1]
-        zs = X[:, 2]
-
-        fig = plt.figure(figsize=(10, 8))
-        ax = fig.add_subplot(111, projection='3d')
-        # Set initial view angle
-        init_azim = 0
-        init_elev = 30
-        
-        #Scatter plot
-        scatter = ax.scatter(xs, ys, zs, c=labels, cmap='viridis')
-        centroids = ax.scatter(gmm.means_[:, 0], gmm.means_[:, 1], gmm.means_[:, 2],
-                   c='red', marker='X', s=300, label='Centroids')
-
-        # Set labels and title
-        ax.set_title("3D plot")
-        ax.set_xlabel('x-axis')
-        ax.set_ylabel('y-axis')
-        ax.set_zlabel('z-axis')
-        ax.legend()
-        # Set the initial view angle
-        ax.view_init(elev=init_elev, azim=init_azim)
-        # Create an animation by rotating the view
-        plt.subplots_adjust(bottom=0.25)
-        ax_azim = plt.axes([0.2, 0.1, 0.6, 0.03])
-        ax_elev = plt.axes([0.2, 0.05, 0.6, 0.03])
-
-        # Create sliders for azimuth and elevation
-        slider_azim = Slider(ax_azim, 'Azimuth', 0, 360, valinit=init_azim, valstep=1)
-        slider_elev = Slider(ax_elev, 'Elevation', 0, 360, valinit=init_elev, valstep=1)
-
-        def update(val):
-            ax.view_init(elev=slider_elev.val, azim=slider_azim.val)
-            fig.canvas.draw_idle()
-
-        slider_azim.on_changed(update)
-        slider_elev.on_changed(update)
-        plt.show()
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=X[:, 0], 
+            y=X[:, 1], 
+            mode='markers', 
+            marker=dict(
+                size=3,
+                color=labels, 
+                colorscale='Viridis', 
+                opacity=0.8,
+                showscale=True,
+                colorbar=dict(title='Cluster')
+            ),
+            text=[f'Point {i}<br>Cluster: {labels[i]}' for i in range(len(labels))],
+            hoverinfo='text',
+            name='Data Points'
+        ))
