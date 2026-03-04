@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
+import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -10,8 +11,8 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler
 import pandas as pd
 import kagglehub
 from kagglehub import KaggleDatasetAdapter
-#from my files
 
+#from my files
 from VAE import VariationalAutoencoder
 from GMM_bic import GMM
 
@@ -131,9 +132,7 @@ def get_tensor(df):
 def save_model(model, path):
     torch.save(model.state_dict(), path)
 
-
-
-def train_and_save_vae(train_loader, epochs=100, lr=0.001, path='vae_model.pth'):
+def train_and_save_vae(train_loader, epochs=60, lr=0.001, path='vae_model.pth'):
     #Use normalised data
     X_tensor = get_tensor(D.df)
     sample_size = int(0.1 * len(X_tensor))  # Use 10% of the data for training
@@ -146,7 +145,7 @@ def train_and_save_vae(train_loader, epochs=100, lr=0.001, path='vae_model.pth')
     input_dim = X_tensor.shape[1]
 
     vae = VariationalAutoencoder(input_dim=input_dim, hidden_dim=128, latent_dim=3)
-    train_vae(vae,train_loader,60, lr=0.001)
+    train_vae(vae,train_loader,epochs, lr)
 
     vae.eval()#eval inherited from nn module
     with torch.no_grad():
@@ -154,6 +153,13 @@ def train_and_save_vae(train_loader, epochs=100, lr=0.001, path='vae_model.pth')
         latent_vectors = mu.numpy()
     save_model(vae, path)
     return latent_vectors
+
+def load_model(path, input_dim, hidden_dim=128, latent_dim=3):
+    model = VariationalAutoencoder(input_dim=input_dim, hidden_dim=hidden_dim, latent_dim=latent_dim)
+    model.load_state_dict(torch.load(path))
+    model.eval()
+    return model
+
 
 #Apply GMM clustering to the latent space
 gmm_model = GMM()
