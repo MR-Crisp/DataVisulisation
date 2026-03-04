@@ -125,10 +125,6 @@ def get_tensor(df):
     X_tensor = torch.tensor(X)
     return X_tensor
 
-
-
-
-
 def save_model(model, path):
     torch.save(model.state_dict(), path)
 
