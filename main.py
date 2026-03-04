@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import pickle
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -125,24 +126,34 @@ def get_tensor(df):
 
 
 
-#Use normalised data
-X_tensor = get_tensor(D.df)
-sample_size = int(0.1 * len(X_tensor))  # Use 10% of the data for training
-X_tensor = X_tensor[:sample_size]  # Take the first 10% of the data for training
 
-dataset = TensorDataset(X_tensor)
-train_loader = DataLoader(dataset, batch_size=512, shuffle=True)
 
-#Get input dimension for VAE
-input_dim = X_tensor.shape[1]
+def save_model(model, path):
+    torch.save(model.state_dict(), path)
 
-vae = VariationalAutoencoder(input_dim=input_dim, hidden_dim=128, latent_dim=3)
-train_vae(vae,train_loader,60, lr=0.001)
 
-vae.eval()#eval inherited from nn module
-with torch.no_grad():
-    mu, logvar = vae.encode(X_tensor)
-    latent_vectors = mu.numpy()
+
+def train_and_save_vae(train_loader, epochs=100, lr=0.001, path='vae_model.pth'):
+    #Use normalised data
+    X_tensor = get_tensor(D.df)
+    sample_size = int(0.1 * len(X_tensor))  # Use 10% of the data for training
+    X_tensor = X_tensor[:sample_size]  # Take the first 10% of the data for training
+
+    dataset = TensorDataset(X_tensor)
+    train_loader = DataLoader(dataset, batch_size=512, shuffle=True)
+
+    #Get input dimension for VAE
+    input_dim = X_tensor.shape[1]
+
+    vae = VariationalAutoencoder(input_dim=input_dim, hidden_dim=128, latent_dim=3)
+    train_vae(vae,train_loader,60, lr=0.001)
+
+    vae.eval()#eval inherited from nn module
+    with torch.no_grad():
+        mu, logvar = vae.encode(X_tensor)
+        latent_vectors = mu.numpy()
+    save_model(vae, path)
+    return latent_vectors
 
 #Apply GMM clustering to the latent space
 gmm_model = GMM()
