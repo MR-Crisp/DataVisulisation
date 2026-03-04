@@ -160,7 +160,17 @@ def load_model(path, input_dim, hidden_dim=128, latent_dim=3):
     model.eval()
     return model
 
-
+if os.path.exists('vae_model.pth'):
+    print("Loading existing VAE model...")
+    input_dim = D.df.shape[1] - 1 if 'Cover_Type' in D.df.columns else D.df.shape[1]
+    vae_model = load_model('vae_model.pth', input_dim=input_dim, hidden_dim=128, latent_dim=3)
+    with torch.no_grad():
+        X_tensor = get_tensor(D.df)
+        mu, logvar = vae_model.encode(X_tensor)
+        latent_vectors = mu.numpy()
+else:
+    print("Training new VAE model...")
+    latent_vectors = train_and_save_vae(train_loader=None, epochs=60, lr=0.001, path='vae_model.pth')
 #Apply GMM clustering to the latent space
 gmm_model = GMM()
 labels, gmm = gmm_model.GMM_calc(latent_vectors)
