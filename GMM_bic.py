@@ -25,9 +25,17 @@ class GMM():
         return labels,gmm
 
     def visual(self,X,labels,gmm):
+        print("Starting visualization...")
+        print(f"Data shape: {X.shape}")
+        print(f"Number of clusters: {len(np.unique(labels))}")
+        print(f"Centroid coordinates:\n{gmm.means_}")
         x_coords = X[:, 0]
         y_coords = X[:, 1]
         z_coords = X[:, 2]
+        print(f"X range: [{x_coords.min():.3f}, {x_coords.max():.3f}]")
+        print(f"Y range: [{y_coords.min():.3f}, {y_coords.max():.3f}]")
+        print(f"Z range: [{z_coords.min():.3f}, {z_coords.max():.3f}]")
+
         fig = go.Figure()
 
         # Add data points with cluster coloring
