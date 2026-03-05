@@ -18,7 +18,7 @@ class GMM():
 
     # Calculate BIC values for 1 to 10 clusters
     def GMM_calc(self,X):
-        bic_values = self.calculate_bic_for_gmm(X, max_clusters=10)
+        bic_values = self.calculate_bic_for_gmm(X, max_clusters=20)
         optimal_clusters = np.argmin(bic_values) + 1
         gmm= GaussianMixture(n_components=optimal_clusters, covariance_type='full', random_state=42).fit(X)
         labels = gmm.predict(X)
@@ -191,6 +191,4 @@ class GMM():
             return frames
 
         fig.frames = create_rotation_frames()
-        print("x")
         fig.show()
-        print("y")

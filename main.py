@@ -161,9 +161,5 @@ labels, gmm = gmm_model.GMM_calc(latent_vectors)
 print(f"Number of clusters found: {len(np.unique(labels))}")
 print(f"GMM converged: {gmm.converged_}")
 print(f"Cluster distribution: {np.bincount(labels)}")
-try:
-    gmm_model.visual(latent_vectors,labels, gmm)
-except Exception as e:
-    print(f"Visualisation failed: {e}")
-    import traceback
-    traceback.print_exc()
+
+gmm_model.visual(latent_vectors,labels, gmm)
