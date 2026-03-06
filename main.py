@@ -1,5 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import pickle
+import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -9,8 +11,8 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler
 import pandas as pd
 import kagglehub
 from kagglehub import KaggleDatasetAdapter
-#from my files
 
+#from my files
 from VAE import VariationalAutoencoder
 from GMM_bic import GMM
 
@@ -66,19 +68,6 @@ class StaticDataset:
 
         return self.df
 
-
-file_path = "./covertype.csv"
-testset = kagglehub.load_dataset(
-  KaggleDatasetAdapter.PANDAS,"zsinghrahulk/covertype-forest-cover-types",file_path)
-
-
-D = StaticDataset()#needs to be fixed
-D.input_covertype_dataset(testset)
-D.clean_covertype_dataset()
-D.normalise_covertype_data()
-print(D.df.shape)
-
-
 def train_vae(model, train_loader, epochs=100, lr=0.001):
     optimiser = optim.Adam(model.parameters(), lr=lr)
     model.train()
@@ -123,28 +112,54 @@ def get_tensor(df):
     X_tensor = torch.tensor(X)
     return X_tensor
 
+def save_model(model, path):
+    torch.save(model.state_dict(), path)
+
+def load_model(path, input_dim, hidden_dim=128, latent_dim=3):
+    model = VariationalAutoencoder(input_dim=input_dim, hidden_dim=hidden_dim, latent_dim=latent_dim)
+    model.load_state_dict(torch.load(path, weights_only=False))
+    model.eval()
+    return model
 
 
-#Use normalised data
+
+file_path = "./covertype.csv"
+testset = kagglehub.load_dataset(
+  KaggleDatasetAdapter.PANDAS,"zsinghrahulk/covertype-forest-cover-types",file_path)
+
+
+D = StaticDataset()
+D.input_covertype_dataset(testset)
+D.clean_covertype_dataset()
+D.normalise_covertype_data()
+print(D.df.shape)
+
+input_dim = D.df.shape[1] - 1 if 'Cover_Type' in D.df.columns else D.df.shape[1]
 X_tensor = get_tensor(D.df)
 sample_size = int(0.1 * len(X_tensor))  # Use 10% of the data for training
 X_tensor = X_tensor[:sample_size]  # Take the first 10% of the data for training
 
-dataset = TensorDataset(X_tensor)
-train_loader = DataLoader(dataset, batch_size=512, shuffle=True)
+if os.path.exists('vae_model.pth'):
+    print("Loading existing VAE model...")
+    vae_model = load_model('vae_model.pth', input_dim=input_dim, hidden_dim=128, latent_dim=3)
+else:
+    print("Training new VAE model...")
+    dataset = TensorDataset(X_tensor)
+    train_loader = DataLoader(dataset, batch_size=512, shuffle=True)
+    vae_model = VariationalAutoencoder(input_dim=input_dim, hidden_dim=128, latent_dim=3)
+    train_vae(vae_model,train_loader,epochs=60, lr=0.001)
+    save_model(vae_model, 'vae_model.pth')
+    print("VAE model trained and saved as 'vae_model.pth'.")
 
-#Get input dimension for VAE
-input_dim = X_tensor.shape[1]
-
-vae = VariationalAutoencoder(input_dim=input_dim, hidden_dim=128, latent_dim=3)
-train_vae(vae,train_loader,60, lr=0.001)
-
-vae.eval()#eval inherited from nn module
 with torch.no_grad():
-    mu, logvar = vae.encode(X_tensor)
+    mu, logvar = vae_model.encode(X_tensor)
     latent_vectors = mu.numpy()
 
 #Apply GMM clustering to the latent space
 gmm_model = GMM()
 labels, gmm = gmm_model.GMM_calc(latent_vectors)
+print(f"Number of clusters found: {len(np.unique(labels))}")
+print(f"GMM converged: {gmm.converged_}")
+print(f"Cluster distribution: {np.bincount(labels)}")
+
 gmm_model.visual(latent_vectors,labels, gmm)
