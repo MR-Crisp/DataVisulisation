@@ -14,11 +14,12 @@ from kagglehub import KaggleDatasetAdapter
 import plotly.graph_objects as go
 import plotly.express as px
 from scipy.spatial import Voronoi
+import umap
 
 #from my files
 from VAE import VariationalAutoencoder
 from GMM_bic import GMM
-
+from voronoi_algorithm import voronoi_finite_polygons,plot_voronoi
 
 
 
@@ -38,7 +39,7 @@ class StaticDataset:
         unnamed_cols = [col for col in df.columns if 'unnamed' in col.lower() or 'index' in col.lower()]
         if unnamed_cols:
             df = df.drop(columns=unnamed_cols)
-        
+
         #Remove all empty row/columns
         df = df.dropna(how='all', axis=0)  # Drop rows
         df = df.dropna(how='all', axis=1)  # Drop columns
@@ -74,7 +75,7 @@ class StaticDataset:
 def train_vae(model, train_loader, epochs=100, lr=0.001):
     optimiser = optim.Adam(model.parameters(), lr=lr)
     model.train()
-    
+
     for epoch in range(epochs):
         total_loss = 0
         total_recon_loss = 0
@@ -83,14 +84,14 @@ def train_vae(model, train_loader, epochs=100, lr=0.001):
         for batch_idx, (data,) in enumerate(train_loader):#for every epoch, go through the batch and optimise weights
             optimiser.zero_grad()#optimiser
             recon_batch, mu, logvar = model(data)#forward pass
-            
+
             # VAE Loss using mean square error
             recon_loss = nn.MSELoss(reduction='sum')(recon_batch, data)#loss of input vs output (encoder)
             kl_loss = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())#comparing variance vs normal distribution N(0,1)
-            
+
             beta = 0.1 #Beta-VAE approach to balance reconstruction and KL divergence
             loss = recon_loss + beta * kl_loss#total loss
-            
+
             loss.backward()#backwards pass
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)#gradient clipping to prevent exploding gradients
             optimiser.step()#next
@@ -98,7 +99,7 @@ def train_vae(model, train_loader, epochs=100, lr=0.001):
             total_loss += loss.item()
             total_recon_loss += recon_loss.item()
             total_kl_loss += kl_loss.item()
-        
+
         if epoch % 20 == 0:#for every 20 epochs
             avg_loss = total_loss / len(train_loader.dataset)
             avg_recon_loss = total_recon_loss / len(train_loader.dataset)
@@ -158,6 +159,7 @@ with torch.no_grad():
     mu, logvar = vae_model.encode(X_tensor)
     latent_vectors = mu.numpy()
 
+
 # #Apply GMM clustering to the latent space
 # gmm_model = GMM()
 # labels, gmm = gmm_model.GMM_calc(latent_vectors)
@@ -168,55 +170,44 @@ with torch.no_grad():
 # gmm_model.visual(latent_vectors,labels, gmm)
 
 
+# using latent to 2d using umap(dimesionality reduction)
+# Using full latent vectors (not just first 2 dims) gives a much more
+# meaningful layout — UMAP preserves local structure across all 3 dims.
 
+reducer = umap.UMAP(
+    n_components=2,
+    n_neighbors=15,  # local neighbourhood size — increase for smoother layout
+    min_dist=0.1,  # how tightly points cluster — 0.0 = tightest
+    random_state=42,
+    metric='euclidean'
+)
+coords_2d = reducer.fit_transform(latent_vectors)  # shape (N, 2)
 
-# --- Prepare points ---
-points = latent_vectors[:, :2]
-points -= points.mean(axis=0)
-points /= points.std(axis=0)
+#Pull Cover_Type labels aligned to the sample
+cover_labels = D.df['Cover_Type'].values[:sample_size].astype(int)
+unique_classes = np.unique(cover_labels)
+n_classes = len(unique_classes)
 
-vor = Voronoi(points)
+# Build a colour map
+palette = px.colors.qualitative.Bold
+class_colour = {cls: palette[i % len(palette)] for i, cls in enumerate(unique_classes)}
+cover_type_names = {
+    1: "Spruce/Fir",
+    2: "Lodgepole Pine",
+    3: "Ponderosa Pine",
+    4: "Cottonwood/Willow",
+    5: "Aspen",
+    6: "Douglas-fir",
+    7: "Krummholz"
+}
 
-# Generate a color palette
-num_regions = len(vor.point_region)
-colors = px.colors.qualitative.Safe  # list of colors in 'rgb(r,g,b)' format
-colors = colors * ((num_regions // len(colors)) + 1)  # repeat if needed
-
-# --- Create figure ---
-fig = go.Figure()
-
-for i, region_index in enumerate(vor.point_region):
-    region = vor.regions[region_index]
-    if region and -1 not in region:
-        polygon = np.array([vor.vertices[j] for j in region])
-
-        # Convert 'rgb(r,g,b)' to 'rgba(r,g,b,0.4)' for transparency
-        fill_rgba = colors[i].replace('rgb', 'rgba').replace(')', ',0.4)')
-
-        fig.add_trace(go.Scatter(
-            x=polygon[:, 0],
-            y=polygon[:, 1],
-            fill='toself',
-            fillcolor=fill_rgba,
-            line=dict(color='white', width=0.5),
-            mode='lines',
-            showlegend=False
-        ))
-
-
-
-# Zoom into center
-center = points.mean(axis=0)
-zoom_factor = 2.5
-fig.update_xaxes(range=[center[0] - zoom_factor, center[0] + zoom_factor])
-fig.update_yaxes(range=[center[1] - zoom_factor, center[1] + zoom_factor])
-
-# Layout
-fig.update_layout(
-    title="Voronoi Diagram from Latent Space",
-    width=700,
-    height=700,
-    plot_bgcolor='white'
+fig = plot_voronoi(
+    coords_2d=coords_2d,
+    labels=cover_labels,
+    class_colour=class_colour,
+    class_names=cover_type_names
 )
 
 fig.show()
+
+
