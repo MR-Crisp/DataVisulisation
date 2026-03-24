@@ -159,55 +159,50 @@ with torch.no_grad():
     mu, logvar = vae_model.encode(X_tensor)
     latent_vectors = mu.numpy()
 
+choice = input("Do you want GMM or Voronoi ?")
+if choice == "GMM":
+    #Apply GMM clustering to the latent space
+    gmm_model = GMM()
+    labels, gmm = gmm_model.GMM_calc(latent_vectors)
+    print(f"Number of clusters found: {len(np.unique(labels))}")
+    print(f"GMM converged: {gmm.converged_}")
+    print(f"Cluster distribution: {np.bincount(labels)}")
 
-# #Apply GMM clustering to the latent space
-# gmm_model = GMM()
-# labels, gmm = gmm_model.GMM_calc(latent_vectors)
-# print(f"Number of clusters found: {len(np.unique(labels))}")
-# print(f"GMM converged: {gmm.converged_}")
-# print(f"Cluster distribution: {np.bincount(labels)}")
-#
-# gmm_model.visual(latent_vectors,labels, gmm)
+    gmm_model.visual(latent_vectors,labels, gmm)
 
+elif choice == "Vor":
+    # using latent to 2d using umap(dimesionality reduction)
+    # Using full latent vectors (not just first 2 dims) gives a much more
+    # meaningful layout — UMAP preserves local structure across all 3 dims.
 
-# using latent to 2d using umap(dimesionality reduction)
-# Using full latent vectors (not just first 2 dims) gives a much more
-# meaningful layout — UMAP preserves local structure across all 3 dims.
+    reducer = umap.UMAP(
+        n_components=2,
+        n_neighbors=15,  # local neighbourhood size — increase for smoother layout
+        min_dist=0.1,  # how tightly points cluster — 0.0 = tightest
+        random_state=42,
+        metric='euclidean'
+    )
+    coords_2d = reducer.fit_transform(latent_vectors)  # shape (N, 2)
 
-reducer = umap.UMAP(
-    n_components=2,
-    n_neighbors=15,  # local neighbourhood size — increase for smoother layout
-    min_dist=0.1,  # how tightly points cluster — 0.0 = tightest
-    random_state=42,
-    metric='euclidean'
-)
-coords_2d = reducer.fit_transform(latent_vectors)  # shape (N, 2)
+    #Pull Cover_Type labels aligned to the sample
+    cover_labels = D.df['Cover_Type'].values[:sample_size].astype(int)
+    unique_classes = np.unique(cover_labels)
+    n_classes = len(unique_classes)
 
-#Pull Cover_Type labels aligned to the sample
-cover_labels = D.df['Cover_Type'].values[:sample_size].astype(int)
-unique_classes = np.unique(cover_labels)
-n_classes = len(unique_classes)
+    # Build a colour map
+    palette = px.colors.qualitative.Bold
+    class_colour = {cls: palette[i % len(palette)] for i, cls in enumerate(unique_classes)}
+    cover_type_names = {
+        1: "Spruce/Fir",
+        2: "Lodgepole Pine",
+        3: "Ponderosa Pine",
+        4: "Cottonwood/Willow",
+        5: "Aspen",
+        6: "Douglas-fir",
+        7: "Krummholz"}
 
-# Build a colour map
-palette = px.colors.qualitative.Bold
-class_colour = {cls: palette[i % len(palette)] for i, cls in enumerate(unique_classes)}
-cover_type_names = {
-    1: "Spruce/Fir",
-    2: "Lodgepole Pine",
-    3: "Ponderosa Pine",
-    4: "Cottonwood/Willow",
-    5: "Aspen",
-    6: "Douglas-fir",
-    7: "Krummholz"
-}
+    fig = plot_voronoi(coords_2d,cover_labels,class_colour,cover_type_names)
 
-fig = plot_voronoi(
-    coords_2d=coords_2d,
-    labels=cover_labels,
-    class_colour=class_colour,
-    class_names=cover_type_names
-)
-
-fig.show()
+    fig.show()
 
 
