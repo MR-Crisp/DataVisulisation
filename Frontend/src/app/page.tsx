@@ -1,6 +1,29 @@
-import Image from "next/image";
+"use client";
+
+
+import dynamic from 'next/dynamic';
+import { useState, useEffect } from 'react';
+
+interface PlotlyChart {
+  data: any[];
+  layout: any;
+}
+
+const Plot = dynamic(() => import('react-plotly.js'), { ssr: false,loading: () => <p>Loading Chart...</p> });
+
+
 
 export default function Home() {
+const [chartData, setChartData] = useState<PlotlyChart | null>(null);
+
+  useEffect(() => {
+  fetch('/gmm_means.json')
+  .then(response => response.json())
+  .then(data => {setChartData(data);})
+  .catch(error => console.error('Error fetching data:', error));
+  }, []);
+
+  if (!chartData) {return <div>Loading...</div>;}
   return (
     <main className="min-h-screen p-5 bg-[#F0EBE1]">
 
@@ -21,8 +44,15 @@ export default function Home() {
 
 
       {/* Graphs*/}
-        <div className="bg-[#C8B4A0] rounded-xl col-span-2 row-span-4 text-center flex items-center justify-center">Graph Area</div>
-
+        <div className="bg-[#C8B4A0] rounded-xl col-span-2 row-span-4 text-center flex items-center justify-center">
+            <Plot
+             data={chartData.data}
+             layout={chartData.layout}
+             config={{ responsive: true }}
+             style={{ width: '100%', height: '100%' }}
+             useResizeHandler={true}
+        />
+       </div>
       </div>
     </main>
   );
