@@ -58,3 +58,59 @@ print(f"Number of clusters: {len(np.unique(labels))}")
 feature_names = [col for col in D.df.columns if col != 'Cover_Type']
 n_features = len(feature_names)
 
+def decode_latent(z):
+    with torch.no_grad():
+        z_tensor = torch.tensor(z, dtype=torch.float32).unsqueeze(0)
+        reconstructed = vae_model.decode(z_tensor).numpy().flatten()
+    return reconstructed
+
+def create_soft_3d_plot():
+    probs = gmm.predict_proba(latent_vectors)
+    n_clusters = probs.shape[1]
+    # Get cluster colours (tab10 works for up to 10 clusters)
+    cmap = plt.cm.get_cmap('tab10', n_clusters)
+    cluster_colors = cmap(np.arange(n_clusters))[:, :3]   # (n_clusters, 3)
+    point_colors = probs @ cluster_colors                # (n_samples, 3)
+    point_colors_hex = [f'rgb({int(c[0]*255)}, {int(c[1]*255)}, {int(c[2]*255)})' for c in point_colors]
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter3d(
+        x=latent_vectors[:, 0],
+        y=latent_vectors[:, 1],
+        z=latent_vectors[:, 2],
+        mode='markers',
+        marker=dict(size=4, color=point_colors_hex, opacity=0.8),
+        text=[f'Point {i}<br>Probabilities: {probs[i]}' for i in range(len(latent_vectors))],
+        hoverinfo='text',
+        name='Data points',
+        customdata=latent_vectors
+    ))
+    # Add centroids
+    fig.add_trace(go.Scatter3d(
+        x=gmm.means_[:, 0],
+        y=gmm.means_[:, 1],
+        z=gmm.means_[:, 2],
+        mode='markers',
+        marker=dict(size=12, color='red', symbol='diamond', line=dict(width=2, color='black')),
+        name='Centroids'
+    ))
+    # Add a trace for the selected point (initially invisible)
+    fig.add_trace(go.Scatter3d(
+        x=[None], y=[None], z=[None],
+        mode='markers',
+        marker=dict(size=15, color='yellow', symbol='circle', line=dict(width=2, color='black')),
+        name='Selected point'
+    ))
+    fig.update_layout(
+        title='Latent Space Explorer – Click on any point or use sliders',
+        scene=dict(
+            xaxis_title='Latent dim 1',
+            yaxis_title='Latent dim 2',
+            zaxis_title='Latent dim 3',
+            camera=dict(eye=dict(x=1.5, y=1.5, z=1.5)),
+            aspectmode='cube'
+        ),
+        width=800, height=600
+    )
+    return fig
+
