@@ -114,3 +114,27 @@ def create_soft_3d_plot():
     )
     return fig
 
+def heatmap_from_features(features):
+    """Generate a stylised heatmap image (base64) from a feature vector"""
+    fig, ax = plt.subplots(figsize=(12, 8))
+    # Reshape 52 features into 13x4 grid
+    reshaped = features.reshape(13, 4) if len(features) == 52 else features.reshape(1, -1)
+    im = ax.imshow(reshaped, cmap='RdYlBu', aspect='auto', interpolation='bilinear')
+    ax.set_xticks(np.arange(reshaped.shape[1]))
+    ax.set_yticks(np.arange(reshaped.shape[0]))
+    if len(features) == 52:
+        ax.set_xticklabels([f'F{i}' for i in range(4)])
+        ax.set_yticklabels([f'Group {i}' for i in range(13)])
+    else:
+        ax.set_xticklabels([f'F{i}' for i in range(len(features))], rotation=90)
+        ax.set_yticks([])
+    plt.colorbar(im, ax=ax, label='Feature value')
+    ax.set_title('Generated Sample – Feature Heatmap')
+    # Convert to base64
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png', bbox_inches='tight', dpi=100)
+    buf.seek(0)
+    encoded = base64.b64encode(buf.read()).decode('utf-8')
+    plt.close(fig)
+    return f'data:image/png;base64,{encoded}'
+
