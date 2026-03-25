@@ -138,3 +138,36 @@ def heatmap_from_features(features):
     plt.close(fig)
     return f'data:image/png;base64,{encoded}'
 
+def particle_from_features(features):
+    """Generate a particle system Plotly figure (returns HTML div string)"""
+    n = len(features)
+    angles = np.linspace(0, 2*np.pi, n, endpoint=False)
+    norm_vals = (features - features.min()) / (features.max() - features.min() + 1e-8)
+    radii = 1 + norm_vals * 0.8
+    x = radii * np.cos(angles)
+    y = radii * np.sin(angles)
+    sizes = 10 + norm_vals * 30
+    colors = norm_vals
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=x, y=y,
+        mode='markers+text',
+        marker=dict(size=sizes, color=colors, colorscale='Viridis', showscale=True,
+                    colorbar=dict(title='Feature value')),
+        text=[f'F{i}' for i in range(n)],
+        textposition='middle center',
+        hoverinfo='text'
+    ))
+    # Add outer circle
+    theta = np.linspace(0, 2*np.pi, 100)
+    fig.add_trace(go.Scatter(x=np.cos(theta), y=np.sin(theta), mode='lines',
+                             line=dict(color='gray', width=2, dash='dash'), showlegend=False))
+    fig.update_layout(
+        title='Particle System – Each particle represents a feature',
+        xaxis=dict(visible=False, range=[-2.2, 2.2]),
+        yaxis=dict(visible=False, range=[-2.2, 2.2]),
+        width=500, height=500, showlegend=False
+    )
+    return dcc.Graph(figure=fig)
+
