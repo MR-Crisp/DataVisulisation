@@ -171,3 +171,100 @@ def particle_from_features(features):
     )
     return dcc.Graph(figure=fig)
 
+
+app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+
+app.layout = dbc.Container([
+    dbc.Row([
+        dbc.Col(html.H1("Generative Data Visualisation – Latent Space Explorer",
+                        className="text-center my-4"), width=12)
+    ]),
+    dbc.Row([
+        dbc.Col([
+            dcc.Graph(id='latent-plot', figure=create_soft_3d_plot(), style={'height': '600px'})
+        ], width=6),
+        dbc.Col([
+            dbc.Card([
+                dbc.CardHeader("Latent Space Controls"),
+                dbc.CardBody([
+                    html.Label("Latent dimension 1"),
+                    dcc.Slider(id='z1-slider',
+                               min=float(latent_vectors[:,0].min()), max=float(latent_vectors[:,0].max()),
+                               step=0.05, value=float(latent_vectors[0,0]), marks=None,
+                               tooltip={"placement": "bottom", "always_visible": True}),
+                    html.Br(),
+                    html.Label("Latent dimension 2"),
+                    dcc.Slider(id='z2-slider',
+                               min=float(latent_vectors[:,1].min()), max=float(latent_vectors[:,1].max()),
+                               step=0.05, value=float(latent_vectors[0,1]), marks=None,
+                               tooltip={"placement": "bottom", "always_visible": True}),
+                    html.Br(),
+                    html.Label("Latent dimension 3"),
+                    dcc.Slider(id='z3-slider',
+                               min=float(latent_vectors[:,2].min()), max=float(latent_vectors[:,2].max()),
+                               step=0.05, value=float(latent_vectors[0,2]), marks=None,
+                               tooltip={"placement": "bottom", "always_visible": True}),
+                    html.Br(),
+                    dbc.Button("Random point", id="random-btn", color="primary", className="mt-2 w-100")
+                ])
+            ]),
+            html.Br(),
+            dbc.Card([
+                dbc.CardHeader("Visualisation Mode"),
+                dbc.CardBody([
+                    dcc.RadioItems(id='viz-mode',
+                                   options=[
+                                       {'label': ' Heatmap', 'value': 'heatmap'},
+                                       {'label': ' Particle System', 'value': 'particle'}
+                                   ],
+                                   value='heatmap', inline=True, className="mb-3"),
+                    html.Div(id='generated-viz')
+                ])
+            ])
+        ], width=6)
+    ])
+], fluid=True)
+
+@app.callback(
+    [Output('z1-slider', 'value'),
+     Output('z2-slider', 'value'),
+     Output('z3-slider', 'value')],
+    [Input('latent-plot', 'clickData'),
+     Input('random-btn', 'n_clicks')],
+    [State('z1-slider', 'value'),
+     State('z2-slider', 'value'),
+     State('z3-slider', 'value')]
+)
+def update_sliders_from_click(clickData, n_clicks, z1, z2, z3):
+    ctx = callback_context
+    if not ctx.triggered:
+        return [z1, z2, z3]
+    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    if trigger_id == 'latent-plot' and clickData:
+        point_idx = clickData['points'][0]['pointIndex']
+        z = latent_vectors[point_idx]
+        return [z[0], z[1], z[2]]
+    elif trigger_id == 'random-btn':
+        idx = np.random.randint(0, len(latent_vectors))
+        z = latent_vectors[idx]
+        return [z[0], z[1], z[2]]
+    return [z1, z2, z3]
+
+@app.callback(
+    Output('generated-viz', 'children'),
+    [Input('z1-slider', 'value'),
+     Input('z2-slider', 'value'),
+     Input('z3-slider', 'value'),
+     Input('viz-mode', 'value')]
+)
+def update_generated(z1, z2, z3, mode):
+    z = np.array([z1, z2, z3])
+    features = decode_latent(z)
+    if mode == 'heatmap':
+        img_data = heatmap_from_features(features)
+        return html.Img(src=img_data, style={'width': '100%'})
+    else:
+        return particle_from_features(features)
+
+if __name__ == '__main__':
+    app.run(debug=True, host='127.0.0.1', port=8050)
