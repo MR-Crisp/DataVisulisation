@@ -1,6 +1,10 @@
 import pytest
 import torch
 from VAE import VariationalAutoencoder
+from GMM_bic import GMM
+from unittest.mock import patch
+from sklearn.mixture import GaussianMixture
+import numpy as np
 
 def test_VAE_init():
     vae = VariationalAutoencoder(input_dim=4, hidden_dim=128, latent_dim=2)
@@ -78,3 +82,77 @@ def test_forward_no_nan():
     assert torch.isfinite(recon).all()
     assert torch.isfinite(mu).all()
     assert torch.isfinite(logvar).all()
+
+# GMM-01: init
+def test_GMM_init():
+    gmm = GMM()
+    assert isinstance(gmm, GMM)
+
+# GMM-02: calculate_bic_for_gmm returns correct number of values
+def test_calculate_bic_for_gmm():
+    gmm = GMM()
+    X = np.random.rand(10, 3)
+    bic_values = gmm.calculate_bic_for_gmm(X, max_clusters=5)
+    assert len(bic_values) == 5
+
+# GMM-03: calculate_bic_for_gmm with max_clusters=1
+def test_calculate_bic_for_gmm_single_cluster():
+    gmm = GMM()
+    X = np.random.rand(10, 3)
+    bic_values = gmm.calculate_bic_for_gmm(X, max_clusters=1)
+    assert len(bic_values) == 1
+
+# GMM-04: calculate_bic_for_gmm edge case - invalid data shape (1D array)
+def test_calculate_bic_for_gmm_invalid_shape():
+    gmm = GMM()
+    X = np.random.rand(10)  # 1D, invalid
+    with pytest.raises(Exception):
+        gmm.calculate_bic_for_gmm(X, max_clusters=3)
+
+# GMM-05: GMM_calc returns labels and trained gmm
+def test_GMM_calc():
+    gmm = GMM()
+    X = np.random.rand(20, 3)
+    labels, fitted_gmm = gmm.GMM_calc(X)
+    assert len(labels) == 20
+    assert isinstance(fitted_gmm, GaussianMixture)
+
+# GMM-06: GMM_calc edge case - very small dataset
+def test_GMM_calc_small_dataset():
+    gmm = GMM()
+    X = np.random.rand(2, 3)
+    labels, fitted_gmm = gmm.GMM_calc(X)
+    assert len(labels) == 2
+
+# GMM-07: GMM_calc edge case - empty dataset
+def test_GMM_calc_empty():
+    gmm = GMM()
+    X = np.array([])
+    with pytest.raises(Exception):
+        gmm.GMM_calc(X)
+
+# GMM-08: visual runs without errors
+def test_visual():
+    gmm_instance = GMM()
+    X = np.random.rand(10, 3)
+    labels, fitted_gmm = gmm_instance.GMM_calc(X)
+    with patch('plotly.graph_objects.Figure.show'):  # suppress plot window
+        gmm_instance.visual(X, labels, fitted_gmm)
+
+# GMM-09: visual edge case - mismatched labels length
+def test_visual_mismatched_labels():
+    gmm_instance = GMM()
+    X = np.random.rand(10, 3)
+    labels = np.zeros(5)  # wrong length
+    _, fitted_gmm = gmm_instance.GMM_calc(np.random.rand(10, 3))
+    with pytest.raises(Exception):
+        gmm_instance.visual(X, labels, fitted_gmm)
+
+# GMM-10: visual edge case - insufficient dimensions (2D instead of 3D)
+def test_visual_insufficient_dimensions():
+    gmm_instance = GMM()
+    X = np.random.rand(10, 2)  # only 2 dimensions
+    labels = np.zeros(10)
+    _, fitted_gmm = gmm_instance.GMM_calc(np.random.rand(10, 3))
+    with pytest.raises((IndexError, Exception)):
+        gmm_instance.visual(X, labels, fitted_gmm)
