@@ -4,6 +4,8 @@ import torch
 import os
 import base64
 import io
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend for safer threading with Dash
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import plotly.express as px
@@ -14,8 +16,7 @@ from kagglehub import KaggleDatasetAdapter
 
 from VAE import VariationalAutoencoder
 from GMM_bic import GMM
-from main import StaticDataset, get_tensor, load_model, train_vae, save_model
-
+from main import StaticDataset, get_tensor, load_model, train_vae, save_model, load_model
 
 file_path = "./covertype.csv"
 testset = kagglehub.load_dataset(
@@ -119,7 +120,7 @@ def heatmap_from_features(features):
     fig, ax = plt.subplots(figsize=(12, 8))
     # Reshape 52 features into 13x4 grid
     reshaped = features.reshape(13, 4) if len(features) == 52 else features.reshape(1, -1)
-    im = ax.imshow(reshaped, cmap='RdYlBu', aspect='auto', interpolation='bilinear')
+    im = ax.imshow(reshaped, cmap='RdYlBu_r', aspect='auto', interpolation='bilinear')
     ax.set_xticks(np.arange(reshaped.shape[1]))
     ax.set_yticks(np.arange(reshaped.shape[0]))
     if len(features) == 52:
