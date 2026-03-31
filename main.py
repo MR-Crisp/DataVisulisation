@@ -150,7 +150,4 @@ gmm_model = GMM()
 labels, gmm = gmm_model.GMM_calc(latent_vectors)
 gmm_model.visual(latent_vectors,labels, gmm)
 
-means_df = pd.DataFrame(gmm.means_, columns=['x', 'y', 'z'])
-fig = px.scatter_3d(means_df, x='x', y='y', z='z', color=means_df.index)
-with open("./Frontend/public/gmm_means.json", "w") as f:
-    f.write(fig.to_json())
+
