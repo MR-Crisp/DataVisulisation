@@ -264,28 +264,57 @@ def create_soft_3d_plot():
     return fig
 
 def heatmap_from_features(features):
-    """Generate a stylised heatmap image (base64) from a feature vector"""
-    fig, ax = plt.subplots(figsize=(12, 8))
-    # Reshape 52 features into 13x4 grid
-    reshaped = features.reshape(13, 4) if len(features) == 52 else features.reshape(1, -1)
-    im = ax.imshow(reshaped, cmap='RdYlBu_r', aspect='auto', interpolation='bilinear')
-    ax.set_xticks(np.arange(reshaped.shape[1]))
+    """Generate a stylised 1-row heatmap where each column is a feature"""
+    fig, ax = plt.subplots(figsize=(16, 4))
     
-    #Add column labels with feature indices
-    ax.set_xticklabels(['F0-3', 'F4-7', 'F8-11', 'F12-15'], fontsize=10)
-    #Add row labels with feature ranges
-    ax.set_yticks(np.arange(reshaped.shape[0]))
-    row_labels = []
-    for i in range(13):
-        start = i * 4
-        end = (i + 1) * 4 - 1
-        row_labels.append(f'F{start}-{end}')
-    ax.set_yticklabels(row_labels, fontsize=9)
-
-    cbar = plt.colorbar(im, ax=ax, label='Feature Value')
+    # Reshape to 1 row with all features
+    reshaped = features.reshape(1, -1)
+    n_features = len(features)
+    
+    # Create the heatmap
+    im = ax.imshow(reshaped, cmap='RdYlBu_r', aspect='auto', interpolation='bilinear')
+    
+    # Set x-ticks for each feature
+    ax.set_xticks(np.arange(n_features))
+    
+    # Create feature labels (shortened for readability)
+    feature_labels = []
+    for i, name in enumerate(feature_names):
+        # Shorten long names for better display
+        if 'Horizontal_Distance_To_Hydrology' in name:
+            short_name = 'HydroDist'
+        elif 'Vertical_Distance_To_Hydrology' in name:
+            short_name = 'HydroVert'
+        elif 'Horizontal_Distance_To_Roadways' in name:
+            short_name = 'RoadDist'
+        elif 'Wilderness_Area' in name:
+            area = name.replace('Wilderness_Area_', '')
+            short_name = f'Wild_{area[:4]}'
+        elif 'Soil_Type' in name:
+            soil_num = name.replace('Soil_Type_', '')
+            short_name = f'Soil{soil_num}'
+        else:
+            short_name = name[:12]  # Truncate to 12 chars
+        
+        feature_labels.append(short_name)
+    
+    ax.set_xticklabels(feature_labels, rotation=90, fontsize=8)
+    
+    # No y-ticks needed for single row
+    ax.set_yticks([])
+    
+    # Add colorbar
+    cbar = plt.colorbar(im, ax=ax, label='Feature Value', shrink=0.8)
     cbar.ax.set_ylabel('Low ← Value → High', rotation=270, labelpad=20)
     
-    ax.set_title('Generated Sample – Feature Heatmap\n(Red=High Value, Blue=Low Value)', fontsize=12)
+    ax.set_title(f'Generated Sample – Feature Heatmap\n(Red=High Value, Blue=Low Value, {n_features} Features)', 
+                 fontsize=12, pad=20)
+    
+    # Add grid lines to separate features
+    ax.set_xticks(np.arange(n_features) - 0.5, minor=True)
+    ax.grid(which='minor', color='white', linestyle='-', linewidth=1)
+    
+    plt.tight_layout()
     
     # Convert to base64
     buf = io.BytesIO()
