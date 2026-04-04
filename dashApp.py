@@ -131,9 +131,9 @@ def create_feature_table(features):
                 
                 # Generate interpretation based on feature type
                 if 'Soil Type' in feature:
-                    interpretation = ' Present' if value > 0.5 else '❌ Absent'
+                    interpretation = ' Present' if value > 0.5 else 'Absent'
                 elif 'Wilderness Area:' in feature:
-                    interpretation = ' In this area' if value > 0.5 else '❌ Not in this area'
+                    interpretation = ' In this area' if value > 0.5 else 'Not in this area'
                 elif 'Elevation' in feature:
                     if value > 0.6:
                         interpretation = 'High elevation'
@@ -171,18 +171,28 @@ def create_feature_table(features):
                 
                 table_data.append({
                     'Category': '',
-                    'Feature Name': feature,
+                    'Feature Name': feature.replace('_', ' '),
                     'Value': value_str,
                     'Interpretation': interpretation
                 })
     
+    # Create conditional styling for group headers
+    style_data_conditional = []
+    for i, row in enumerate(table_data):
+        if row['Category'] != '':
+            style_data_conditional.append({
+                'if': {'row_index': i},
+                'backgroundColor': 'rgb(240, 240, 240)',
+                'fontWeight': 'bold'
+            })
+
     return dash_table.DataTable(
         data=table_data,
         columns=[
-            {'name': 'Category', 'id': 'Category', 'width': '180px'},
-            {'name': 'Feature Name', 'id': 'Feature Name', 'width': '280px'},
-            {'name': 'Value', 'id': 'Value', 'width': '100px'},
-            {'name': 'Interpretation', 'id': 'Interpretation', 'width': '200px'}
+            {'name': 'Category', 'id': 'Category'},
+            {'name': 'Feature Name', 'id': 'Feature Name'},
+            {'name': 'Value', 'id': 'Value'},
+            {'name': 'Interpretation', 'id': 'Interpretation'}
         ],
         style_cell={
             'textAlign': 'left',
