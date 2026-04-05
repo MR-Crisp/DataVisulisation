@@ -468,13 +468,45 @@ def update_sliders_from_click(clickData, n_clicks, z1, z2, z3):
         return [z1, z2, z3]
     trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
     if trigger_id == 'latent-plot' and clickData:
-        point_idx = clickData['points'][0]['pointIndex']
-        z = latent_vectors[point_idx]
-        return [z[0], z[1], z[2]]
+        # Handle different Plotly clickData formats
+        try:
+            # Try to get point index from different possible keys
+            if 'points' in clickData and len(clickData['points']) > 0:
+                point = clickData['points'][0]
+                
+                # Check for different possible index keys
+                if 'pointIndex' in point:
+                    point_idx = point['pointIndex']
+                elif 'pointNumber' in point:
+                    point_idx = point['pointNumber']
+                elif 'customdata' in point:
+                    # If customdata contains the index, use that
+                    point_idx = point['customdata']
+                else:
+                    print(f"Could not find point index in clickData: {point.keys()}")
+                    return [z1, z2, z3]
+                
+                # Get the latent vector for this point
+                if point_idx < len(latent_vectors):
+                    z = latent_vectors[point_idx]
+                    return [z[0], z[1], z[2]]
+                else:
+                    print(f"Point index {point_idx} out of range for latent_vectors")
+                    return [z1, z2, z3]
+            else:
+                print("No points found in clickData")
+                return [z1, z2, z3]
+                
+        except Exception as e:
+            print(f"Error processing clickData: {e}")
+            print(f"clickData structure: {clickData}")
+            return [z1, z2, z3]
+    
     elif trigger_id == 'random-btn':
         idx = np.random.randint(0, len(latent_vectors))
         z = latent_vectors[idx]
         return [z[0], z[1], z[2]]
+    
     return [z1, z2, z3]
 
 @app.callback(
