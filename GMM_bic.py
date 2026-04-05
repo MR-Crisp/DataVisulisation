@@ -3,6 +3,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
 from sklearn.mixture import GaussianMixture
+import pandas as pd
 
 class GMM():
     def __init__(self):

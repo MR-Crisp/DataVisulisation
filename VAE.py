@@ -4,6 +4,9 @@ import torch.nn as nn
 class VariationalAutoencoder(nn.Module):
     def __init__(self, input_dim = 4, hidden_dim = 128, latent_dim = 2):#-----important the number WILL need to change, only done this for the current dataset
         super().__init__()
+        self.input_dim = input_dim  # purely for testing purposes
+        self.hidden_dim = hidden_dim  # testing
+        self.latent_dim = latent_dim#more testing
         # Added more layers to the encoder to increase its capacity to learn complex representations. 
         # Batch normalization is included to stabilize training and improve convergence.
         self.encoder = nn.Sequential(
