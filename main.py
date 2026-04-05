@@ -22,7 +22,6 @@ from GMM_bic import GMM
 from voronoi_algorithm import voronoi_finite_polygons,plot_voronoi
 
 
-
 class StaticDataset:
     def __init__(self):
         self.df = None
@@ -127,37 +126,46 @@ def load_model(path, input_dim, hidden_dim=128, latent_dim=3):
 
 
 
-file_path = "./covertype.csv"
-testset = kagglehub.load_dataset(
-  KaggleDatasetAdapter.PANDAS,"zsinghrahulk/covertype-forest-cover-types",file_path)
+# file_path = "./covertype.csv"
+# testset = kagglehub.load_dataset(
+#     KaggleDatasetAdapter.PANDAS,
+#     "zsinghrahulk/covertype-forest-cover-types",
+#     file_path
+# )
 
+# D = StaticDataset()
+# D.input_covertype_dataset(testset)
+# D.clean_covertype_dataset()
+# D.normalise_covertype_data()
+# print(D.df.shape)
 
-D = StaticDataset()
-D.input_covertype_dataset(testset)
-D.clean_covertype_dataset()
-D.normalise_covertype_data()
-print(D.df.shape)
+# input_dim = D.df.shape[1] - 1 if 'Cover_Type' in D.df.columns else D.df.shape[1]
+# X_tensor = get_tensor(D.df)
+# sample_size = int(0.1 * len(X_tensor))
+# X_tensor = X_tensor[:sample_size]
 
-input_dim = D.df.shape[1] - 1 if 'Cover_Type' in D.df.columns else D.df.shape[1]
-X_tensor = get_tensor(D.df)
-sample_size = int(0.1 * len(X_tensor))  # Use 10% of the data for training
-X_tensor = X_tensor[:sample_size]  # Take the first 10% of the data for training
+# if os.path.exists('vae_model.pth'):
+#     print("Loading existing VAE model...")
+#     vae_model = load_model('vae_model.pth', input_dim=input_dim, hidden_dim=128, latent_dim=3)
+# else:
+#     print("Training new VAE model...")
+#     dataset = TensorDataset(X_tensor)
+#     train_loader = DataLoader(dataset, batch_size=512, shuffle=True)
+#     vae_model = VariationalAutoencoder(input_dim=input_dim, hidden_dim=128, latent_dim=3)
+#     train_vae(vae_model, train_loader, epochs=60, lr=0.001)
+#     save_model(vae_model, 'vae_model.pth')
+#     print("VAE model trained and saved as 'vae_model.pth'.")
 
-if os.path.exists('vae_model.pth'):
-    print("Loading existing VAE model...")
-    vae_model = load_model('vae_model.pth', input_dim=input_dim, hidden_dim=128, latent_dim=3)
-else:
-    print("Training new VAE model...")
-    dataset = TensorDataset(X_tensor)
-    train_loader = DataLoader(dataset, batch_size=512, shuffle=True)
-    vae_model = VariationalAutoencoder(input_dim=input_dim, hidden_dim=128, latent_dim=3)
-    train_vae(vae_model,train_loader,epochs=60, lr=0.001)
-    save_model(vae_model, 'vae_model.pth')
-    print("VAE model trained and saved as 'vae_model.pth'.")
+# with torch.no_grad():
+#     mu, logvar = vae_model.encode(X_tensor)
+#     latent_vectors = mu.numpy()
 
-with torch.no_grad():
-    mu, logvar = vae_model.encode(X_tensor)
-    latent_vectors = mu.numpy()
+# gmm_model = GMM()
+# labels, gmm = gmm_model.GMM_calc(latent_vectors)
+# print(f"Number of clusters found: {len(np.unique(labels))}")
+# print(f"GMM converged: {gmm.converged_}")
+# print(f"Cluster distribution: {np.bincount(labels)}")
+
 
 choice = input("Do you want GMM or Voronoi ?")
 if choice == "GMM":
