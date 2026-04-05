@@ -61,3 +61,35 @@ def compute_heatmap_data(features):
         'min_value': float(min_val),
         'max_value': float(max_val)
     }
+
+# ---- Particle Plot ----
+def compute_particle_plot_data(features, cover_type):
+    n = len(features)
+    angles = np.linspace(0, 2 * np.pi, n, endpoint=False)
+    norm_vals = (features - features.min()) / (features.max() - features.min() + 1e-8)
+    radii = 1 + norm_vals * 0.8
+    x = (radii * np.cos(angles)).tolist()
+    y = (radii * np.sin(angles)).tolist()
+    sizes = (10 + norm_vals * 30).tolist()
+    colours = norm_vals.tolist()
+
+    hover_texts = []
+    for i,name in enumerate(feature_names[:n]):
+        if 'Soil_Type' in name:
+            val_str = 'Present' if features[i] > 0.5 else 'Absent'
+        elif 'Wilderness_Area' in name:
+            val_str = 'Present' if features[i] > 0.5 else 'Absent'
+        else:
+            val_str = f"{features[i]:.3f}"
+        hover_texts.append(f"<b>{name}</b><br>Value: {val_str}<br>Normalised: {norm_vals[i]:.3f}")
+    
+    return {
+        'x': x,
+        'y': y,
+        'sizes': sizes,
+        'colours': colours,
+        'hover_texts': hover_texts,
+        'feature_names': feature_names[:n],
+        'values': features.tolist(),
+        'normalised': norm_vals.tolist() 
+    }
