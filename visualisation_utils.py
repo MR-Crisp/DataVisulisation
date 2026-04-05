@@ -25,3 +25,39 @@ FEATURE_DEFINITIONS = {
 }
 feature_names = [name for name, idx in sorted(FEATURE_DEFINITIONS.items(), key=lambda x: x[1])]
 
+# ---- Heatmap ----
+def compute_heatmap_data(features):
+    n_features = len(features)
+    short_labels = []
+    
+    # Shorten feature names for display
+    short_labels = []
+    for name in feature_names[:n_features]:
+        if 'Horizontal_Distance_To_Hydrology' in name:
+            short = 'HydroDist'
+        elif 'Vertical_Distance_To_Hydrology' in name:
+            short = 'HydroVert'
+        elif 'Horizontal_Distance_To_Roadways' in name:
+            short = 'RoadDist'
+        elif 'Wilderness_Area' in name:
+            area = name.replace('Wilderness_Area_', '')
+            short = f'Wild_{area[:4]}'
+        elif 'Soil_Type' in name:
+            num = name.replace('Soil_Type_', '')
+            short = f'Soil{num}'
+        else:
+            short = name[:12]
+        short_labels.append(short)
+    
+    # Normalise values to [0,1] for better colour mapping
+    min_val = features.min()
+    max_val = features.max()
+    norm_values = (features - min_val) / (max_val - min_val + 1e-8)
+    
+    return {
+        'feature_names': short_labels,
+        'values': features.tolist(),
+        'norm_values': norm_values.tolist(),
+        'min_value': float(min_val),
+        'max_value': float(max_val)
+    }
