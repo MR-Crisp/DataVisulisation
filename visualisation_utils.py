@@ -1,10 +1,6 @@
 import numpy as np
-import base64
-import io
 import plotly.graph_objects as go
 import plotly.io as pio
-import matplotlib
-import matplotlib.pyplot as plt
 
 FEATURE_DEFINITIONS = {
     'Elevation': 0, 'Aspect': 1, 'Slope': 2,
@@ -63,7 +59,7 @@ def compute_heatmap_data(features):
     }
 
 # ---- Particle Plot ----
-def compute_particle_plot_data(features, cover_type):
+def compute_particle_plot_data(features):
     n = len(features)
     angles = np.linspace(0, 2 * np.pi, n, endpoint=False)
     norm_vals = (features - features.min()) / (features.max() - features.min() + 1e-8)
@@ -93,3 +89,38 @@ def compute_particle_plot_data(features, cover_type):
         'values': features.tolist(),
         'normalised': norm_vals.tolist() 
     }
+
+def visualise_particle_plot(features):
+    data = compute_particle_plot_data(features)
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=data['x'], y=data['y'],
+        mode='markers',
+        marker=dict(
+            size=data['sizes'],
+            color=data['colours'],
+            colorscale='RdYlBu_r',
+            showscale=True,
+            colorbar=dict(title='Feature Value')
+        ),
+        text=[f'F{i}' for i in range(len(features))],
+        textposition='middle center',
+        hovertext=data['hover_texts'],
+        hoverinfo='text'
+    ))
+    theta = np.linspace(0, 2*np.pi, 100)
+    fig.add_trace(go.Scatter(
+        x=np.cos(theta), y=np.sin(theta),
+        mode='lines',
+        line=dict(color='gray', width=2, dash='dash'),
+        showlegend=False
+    ))
+    fig.update_layout(
+        title='Particle Plot of Features',
+        xaxis=dict(visible=False, range=[-2.2, 2.2]),
+        yaxis=dict(visible=False, range=[-2.2, 2.2]),
+        width=550,
+        height=550,
+        showlegend=False
+    )
+    return pio.to_json(fig)
