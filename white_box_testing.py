@@ -105,7 +105,7 @@ def test_calculate_bic_for_gmm_single_cluster():
 # GMM-04: calculate_bic_for_gmm edge case - invalid data shape (1D array)
 def test_calculate_bic_for_gmm_invalid_shape():
     gmm = GMM()
-    X = np.random.rand(10)  # 1D, invalid
+    X = np.random.rand(10)
     with pytest.raises(Exception):
         gmm.calculate_bic_for_gmm(X, max_clusters=3)
 
@@ -136,14 +136,14 @@ def test_visual():
     gmm_instance = GMM()
     X = np.random.rand(10, 3)
     labels, fitted_gmm = gmm_instance.GMM_calc(X)
-    with patch('plotly.graph_objects.Figure.show'):  # suppress plot window
+    with patch('plotly.graph_objects.Figure.show'):
         gmm_instance.visual(X, labels, fitted_gmm)
 
 # GMM-09: visual edge case - mismatched labels length
 def test_visual_mismatched_labels():
     gmm_instance = GMM()
     X = np.random.rand(10, 3)
-    labels = np.zeros(5)  # wrong length
+    labels = np.zeros(5)
     _, fitted_gmm = gmm_instance.GMM_calc(np.random.rand(10, 3))
     with pytest.raises(Exception):
         gmm_instance.visual(X, labels, fitted_gmm)
@@ -151,8 +151,11 @@ def test_visual_mismatched_labels():
 # GMM-10: visual edge case - insufficient dimensions (2D instead of 3D)
 def test_visual_insufficient_dimensions():
     gmm_instance = GMM()
-    X = np.random.rand(10, 2)  # only 2 dimensions
+    X = np.random.rand(10, 2)
     labels = np.zeros(10)
     _, fitted_gmm = gmm_instance.GMM_calc(np.random.rand(10, 3))
     with pytest.raises((IndexError, Exception)):
         gmm_instance.visual(X, labels, fitted_gmm)
+
+
+
