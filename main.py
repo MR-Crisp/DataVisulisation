@@ -149,7 +149,8 @@ input_dim = X_tensor.shape[1]
 vae_model = VariationalAutoencoder(input_dim=input_dim, hidden_dim=128, latent_dim=3)
 
 #Train the VAE model
-train_loader = DataLoader(dataset, batch_size=512, shuffle=True)
+train_dataset = TensorDataset(X_tensor)
+train_loader = DataLoader(train_dataset, batch_size=512, shuffle=True)
 train_vae(vae_model, train_loader, epochs=60, lr=0.001)
 
 #Encode to latent space
@@ -163,6 +164,7 @@ labels, gmm = gmm_model.GMM_calc(latent_vectors)
 print(f"Number of clusters found: {len(np.unique(labels))}")
 print(f"GMM converged: {gmm.converged_}")
 print(f"Cluster distribution: {np.bincount(labels)}")
+gmm_model.visual(latent_vectors,labels, gmm)
 
 # if os.path.exists('vae_model.pth'):
 #     print("Loading existing VAE model...")
