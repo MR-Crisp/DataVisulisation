@@ -31,6 +31,7 @@ class StaticDataset:
 
     def preprocess(self):
         self._clean()
+        self._update_feature_cols()
         self._allocate_training_size()
         self._normalise()
         self._split_XY()
@@ -56,6 +57,13 @@ class StaticDataset:
         df = df.dropna(thresh=threshold, axis=0)
 
         self.df = df
+
+    def _update_feature_cols(self):
+        if self.feature_cols:
+            self.feature_cols = [col for col in self.feature_cols if col in self.df.columns]
+        if self.target_col and self.target_col in self.feature_cols:
+            self.feature_cols.remove(self.target_col)
+
     def _allocate_training_size(self):
         n = len(self.df)
         if n <= self.MAX_ROWS:
