@@ -22,7 +22,7 @@ export default function App() {
           <span className="text-sm">Upload File Here</span>
           <FileUploader/>
         </div>
-        <button className="bg-[#0D0D0D] text-[#F0EBE1] py-2 px-4 rounded-lg hover:bg-[#333]">Upload File</button>
+       
         </div>
 
       {/* Graphs*/}
