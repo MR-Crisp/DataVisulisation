@@ -7,6 +7,8 @@ import torch
 from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
 import plotly.express as px
+from fastapi.middleware.cors import CORSMiddleware
+
 
 #from my files
 from main import train_vae,get_tensor, StaticDataset
@@ -15,13 +17,21 @@ from GMM_bic import GMM
 
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # your React port
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 D =  None # main df for the dataset
 latent_vectors = None #from VAE and dataset
 @app.get("/")
 def root():
     return {"message": "Welcome to the API!"}
 
-@app.post("Upload_CSV")
+@app.post("/Upload_CSV")
 async def upload_csv(file: UploadFile = File(...)):
     contents = await file.read()
     csv = io.BytesIO(contents)
@@ -34,6 +44,8 @@ async def upload_csv(file: UploadFile = File(...)):
     sample_size = int(0.1 * len(X_tensor))  # Use 10% of the data for training
     X_tensor = X_tensor[:sample_size]  # Take the first 10% of the data for training
 
+
+"""
 @app.post("/vae_training")
 def vae_training(D: StaticDataset):
     input_dim = D.df.shape[1] - 1 if 'Cover_Type' in D.df.columns else D.df.shape[1]
@@ -52,7 +64,7 @@ def vae_training(D: StaticDataset):
         latent_vectors = mu.numpy()
 
 
-@app.post("GMM_bic")#needs to be updated
+@app.post("/GMM_bic")#needs to be updated
 def gmm_bic(latent_vectors: torch.Tensor):
     gmm_model = GMM()
     labels, gmm = gmm_model.GMM_calc(latent_vectors)
@@ -98,6 +110,7 @@ def voronoi(lanent_space):###########need to make this plotly compatible
 def heatmap(latent):
     pass
 
-@app.get("particle")
+@app.get("/particle")
 def particle(latent):
     pass
+    """

@@ -166,7 +166,7 @@ def load_model(path, input_dim, hidden_dim=128, latent_dim=3):
 # print(f"GMM converged: {gmm.converged_}")
 # print(f"Cluster distribution: {np.bincount(labels)}")
 
-
+"""
 choice = input("Do you want GMM or Voronoi ?")
 if choice == "GMM":
     #Apply GMM clustering to the latent space
@@ -214,3 +214,4 @@ elif choice == "Vor":
     fig.show()
 
 
+"""

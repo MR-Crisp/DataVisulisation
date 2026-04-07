@@ -24,9 +24,9 @@ export default function FileUploader() {
 
         //FIX THE URL
         try{
-            await axios.post("/api/upload", formData, {
+            await axios.post("http://localhost:8000/Upload_CSV", formData, {
                 headers: {
-                    "Content-Type": "ADD THE URL THAT POINTS TO THE BACKEND"
+                    "Content-Type": "multipart/form-data"
                 }
             });
             setStatus("success");
