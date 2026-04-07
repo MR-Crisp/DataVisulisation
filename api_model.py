@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
 import plotly.express as px
 from fastapi.middleware.cors import CORSMiddleware
+import pandas as pd
 
 
 #from my files
@@ -34,7 +35,7 @@ def root():
 @app.post("/Upload_CSV")
 async def upload_csv(file: UploadFile = File(...)):
     contents = await file.read()
-    csv = io.BytesIO(contents)
+    csv = pd.read_csv(io.BytesIO(contents), encoding='latin-1')
     D = StaticDataset()
     D.input_covertype_dataset(csv)
     D.clean_covertype_dataset()

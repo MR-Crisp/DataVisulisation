@@ -214,24 +214,24 @@ __marimo__/
 
 
 # dependencies
-/frontend/node_modules
-/frontend/.pnp
+/Frontend/node_modules
+/Frontend/.pnp
 .pnp.*
-/frontend/.yarn/*
+/Frontend/.yarn/*
 !.yarn/patches
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
 
 # testing
-/frontend/coverage
+/Frontend/coverage
 
 # next.js
-/frontend/.next/
-/frontend/out/
+/Frontend/.next/
+/Frontend/out/
 
 # production
-/frontend/build
+/Frontend/build
 
 # misc
 .DS_Store
@@ -247,7 +247,7 @@ yarn-error.log*
 .env*
 
 # vercel
-/frontend/.vercel
+/Frontend/.vercel
 
 # typescript
 *.tsbuildinfo
