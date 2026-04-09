@@ -1,6 +1,5 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File
 import io
-from fastapi import UploadFile, File
 from voronoi_algorithm import voronoi_finite_polygons,plot_voronoi
 import umap
 import torch
@@ -9,9 +8,10 @@ import numpy as np
 import plotly.express as px
 
 #from my files
-from main import train_vae,get_tensor, StaticDataset
+from main import train_vae,get_tensor
 from VAE import VariationalAutoencoder
 from GMM_bic import GMM
+from Dataset import StaticDataset
 
 
 app = FastAPI()
@@ -26,9 +26,8 @@ async def upload_csv(file: UploadFile = File(...)):
     contents = await file.read()
     csv = io.BytesIO(contents)
     D = StaticDataset()
-    D.input_covertype_dataset(csv)
-    D.clean_covertype_dataset()
-    D.normalise_covertype_data()
+    D.input_dataset(csv)
+    D.preprocess()
     input_dim = D.df.shape[1] - 1 if 'Cover_Type' in D.df.columns else D.df.shape[1]
     X_tensor = get_tensor(D.df)
     sample_size = int(0.1 * len(X_tensor))  # Use 10% of the data for training
