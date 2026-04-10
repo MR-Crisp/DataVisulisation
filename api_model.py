@@ -59,6 +59,7 @@ async def upload_csv(file: UploadFile = File(...),target_col: str = "Cover_Type"
 
 @app.post("/vae_training")
 def vae_training():
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     D = state["D"]
     X_tensor = state["X_tensor"]
     input_dim = D.df.shape[1] - 1 if "Cover_Type" in D.df.columns else D.df.shape[1]
@@ -67,8 +68,10 @@ def vae_training():
     vae_model = VariationalAutoencoder(input_dim=input_dim, hidden_dim=128, latent_dim=3)
     train_vae(vae_model, train_loader, epochs=20, lr=0.001)
     with torch.no_grad():
-        mu, _ = vae_model.encode(X_tensor)
-        state["latent_vectors"] = mu.numpy()
+        X_tensor_gpu = X_tensor.to(device)
+        vae_model = vae_model.to(device)
+        mu, _ = vae_model.encode(X_tensor_gpu)
+        state["latent_vectors"] = mu.cpu().numpy()
 
     state["vae_model"] = vae_model
 

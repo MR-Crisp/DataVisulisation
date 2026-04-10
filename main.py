@@ -23,6 +23,8 @@ from voronoi_algorithm import voronoi_finite_polygons,plot_voronoi
 from Dataset import StaticDataset
 
 def train_vae(model, train_loader, epochs=20, lr=0.001):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
     optimiser = optim.Adam(model.parameters(), lr=lr)
     model.train()
 
@@ -32,6 +34,7 @@ def train_vae(model, train_loader, epochs=20, lr=0.001):
         total_kl_loss = 0
 
         for batch_idx, (data,) in enumerate(train_loader):#for every epoch, go through the batch and optimise weights
+            data = data.to(device)
             optimiser.zero_grad()#optimiser
             recon_batch, mu, logvar = model(data)#forward pass
 
