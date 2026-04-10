@@ -20,56 +20,7 @@ import umap
 from VAE import VariationalAutoencoder
 from GMM_bic import GMM
 from voronoi_algorithm import voronoi_finite_polygons,plot_voronoi
-
-
-class StaticDataset:
-    def __init__(self):
-        self.df = None
-        self.scaler = StandardScaler()
-
-    def input_covertype_dataset(self,location):
-        df = location
-        self.df = df
-
-    def clean_covertype_dataset(self):
-        df = self.df.copy()
-
-        #Remove unnamed/index columns
-        unnamed_cols = [col for col in df.columns if 'unnamed' in col.lower() or 'index' in col.lower()]
-        if unnamed_cols:
-            df = df.drop(columns=unnamed_cols)
-
-        #Remove all empty row/columns
-        df = df.dropna(how='all', axis=0)  # Drop rows
-        df = df.dropna(how='all', axis=1)  # Drop columns
-
-        #Remove duplicates
-        df = df.drop_duplicates()
-
-        #Drop rows where >50% of values are missing
-        threshold = len(df.columns) * 0.5
-        df = df.dropna(thresh=threshold, axis=0)
-
-        self.df = df
-
-
-    def normalise_covertype_data(self):
-        #Seperate features and target if needed
-        if 'Cover_Type' in self.df.columns:
-            features = self.df.drop('Cover_Type', axis=1)
-            target = self.df['Cover_Type']
-
-            #Normalise features
-            normalised_features = self.scaler.fit_transform(features)
-
-            #Combine normalised features with target
-            self.df = pd.DataFrame(normalised_features, columns=features.columns)
-            self.df['Cover_Type'] = target.values
-        else:
-            #Normalise all data if no target column
-            self.df = pd.DataFrame(self.scaler.fit_transform(self.df), columns=self.df.columns)
-
-        return self.df
+from Dataset import StaticDataset
 
 def train_vae(model, train_loader, epochs=100, lr=0.001):
     optimiser = optim.Adam(model.parameters(), lr=lr)
@@ -125,49 +76,53 @@ def load_model(path, input_dim, hidden_dim=128, latent_dim=3):
     return model
 
 
+#Load and preprocess the dataset
+file_path = "./covertype.csv"
+testset = kagglehub.load_dataset(
+    KaggleDatasetAdapter.PANDAS,
+    "zsinghrahulk/covertype-forest-cover-types",
+    file_path
+)
 
-# file_path = "./covertype.csv"
-# testset = kagglehub.load_dataset(
-#     KaggleDatasetAdapter.PANDAS,
-#     "zsinghrahulk/covertype-forest-cover-types",
-#     file_path
-# )
+feature_cols = [col for col in testset.columns if col != 'Cover_Type']
+target_col = 'Cover_Type'
+dataset = StaticDataset(feature_cols=feature_cols, target_col=target_col)
+dataset.input_dataset(testset)
+dataset.preprocess() 
 
-# D = StaticDataset()
-# D.input_covertype_dataset(testset)
-# D.clean_covertype_dataset()
-# D.normalise_covertype_data()
-# print(D.df.shape)
+X_all = dataset.X
+Y_all = dataset.Y
 
-# input_dim = D.df.shape[1] - 1 if 'Cover_Type' in D.df.columns else D.df.shape[1]
-# X_tensor = get_tensor(D.df)
-# sample_size = int(0.1 * len(X_tensor))
-# X_tensor = X_tensor[:sample_size]
+#Take sample of data for training
+sample_size = int(0.1 * len(X_all))
+X_tensor = torch.tensor(X_all[:sample_size].astype('float32'))
+input_dim = X_tensor.shape[1]
+vae_model = VariationalAutoencoder(input_dim=input_dim, hidden_dim=128, latent_dim=3)
 
-# if os.path.exists('vae_model.pth'):
-#     print("Loading existing VAE model...")
-#     vae_model = load_model('vae_model.pth', input_dim=input_dim, hidden_dim=128, latent_dim=3)
-# else:
-#     print("Training new VAE model...")
-#     dataset = TensorDataset(X_tensor)
-#     train_loader = DataLoader(dataset, batch_size=512, shuffle=True)
-#     vae_model = VariationalAutoencoder(input_dim=input_dim, hidden_dim=128, latent_dim=3)
-#     train_vae(vae_model, train_loader, epochs=60, lr=0.001)
-#     save_model(vae_model, 'vae_model.pth')
-#     print("VAE model trained and saved as 'vae_model.pth'.")
+#Train/load/save the VAE model
+# train_dataset = TensorDataset(X_tensor)
+# train_loader = DataLoader(train_dataset, batch_size=512, shuffle=True)
+# train_vae(vae_model, train_loader, epochs=60, lr=0.001)
+if os.path.exists('vae_model.pth'):
+    print("Loading existing VAE model...")
+    vae_model = load_model('vae_model.pth', input_dim=input_dim, hidden_dim=128, latent_dim=3)
+else:
+    print("Training new VAE model...")
+    train_dataset = TensorDataset(X_tensor)
+    train_loader = DataLoader(train_dataset, batch_size=512, shuffle=True)
+    train_vae(vae_model, train_loader, epochs=60, lr=0.001)
+    save_model(vae_model, 'vae_model.pth')
+    print("VAE model trained and saved as 'vae_model.pth'.")
 
-# with torch.no_grad():
-#     mu, logvar = vae_model.encode(X_tensor)
-#     latent_vectors = mu.numpy()
+#Encode to latent space
+with torch.no_grad():
+    mu, logvar = vae_model.encode(X_tensor)
+    latent_vectors = mu.numpy()
 
-# gmm_model = GMM()
-# labels, gmm = gmm_model.GMM_calc(latent_vectors)
-# print(f"Number of clusters found: {len(np.unique(labels))}")
-# print(f"GMM converged: {gmm.converged_}")
-# print(f"Cluster distribution: {np.bincount(labels)}")
 
-"""
-choice = input("Do you want GMM or Voronoi ?")
+
+#Visualisation options
+choice = input("Do you want GMM or Voronoi(Type GMM or Vor): ")
 if choice == "GMM":
     #Apply GMM clustering to the latent space
     gmm_model = GMM()
@@ -175,7 +130,6 @@ if choice == "GMM":
     print(f"Number of clusters found: {len(np.unique(labels))}")
     print(f"GMM converged: {gmm.converged_}")
     print(f"Cluster distribution: {np.bincount(labels)}")
-
     gmm_model.visual(latent_vectors,labels, gmm)
 
 elif choice == "Vor":
@@ -193,7 +147,7 @@ elif choice == "Vor":
     coords_2d = reducer.fit_transform(latent_vectors)  # shape (N, 2)
 
     #Pull Cover_Type labels aligned to the sample
-    cover_labels = D.df['Cover_Type'].values[:sample_size].astype(int)
+    cover_labels = dataset.df['Cover_Type'].values[:sample_size].astype(int)
     unique_classes = np.unique(cover_labels)
     n_classes = len(unique_classes)
 
@@ -214,4 +168,3 @@ elif choice == "Vor":
     fig.show()
 
 
-"""
