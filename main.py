@@ -22,7 +22,7 @@ from GMM_bic import GMM
 from voronoi_algorithm import voronoi_finite_polygons,plot_voronoi
 from Dataset import StaticDataset
 
-def train_vae(model, train_loader, epochs=100, lr=0.001):
+def train_vae(model, train_loader, epochs=20, lr=0.001):
     optimiser = optim.Adam(model.parameters(), lr=lr)
     model.train()
 
@@ -75,7 +75,7 @@ def load_model(path, input_dim, hidden_dim=128, latent_dim=3):
     model.eval()
     return model
 
-
+"""
 #Load and preprocess the dataset
 file_path = "./covertype.csv"
 testset = kagglehub.load_dataset(
@@ -168,3 +168,4 @@ elif choice == "Vor":
     fig.show()
 
 
+"""

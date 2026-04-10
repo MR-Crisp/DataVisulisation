@@ -1,5 +1,7 @@
 from fastapi import FastAPI, UploadFile, File
 import io
+import json
+
 from voronoi_algorithm import voronoi_finite_polygons,plot_voronoi
 import umap
 import torch
@@ -8,7 +10,7 @@ import numpy as np
 import plotly.express as px
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
-
+from fastapi.responses import JSONResponse
 
 #from my files
 from main import train_vae,get_tensor
@@ -26,56 +28,65 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-D =  None # main df for the dataset
-latent_vectors = None #from VAE and dataset
+
+#state (global)
+state = {
+    "D": None,
+    "X_tensor": None,
+    "sample_size": None,
+    "vae_model": None,
+    "latent_vectors": None,
+    "labels": None,
+}
+
 @app.get("/")
 def root():
     return {"message": "Welcome to the API!"}
 
 @app.post("/Upload_CSV")
-async def upload_csv(file: UploadFile = File(...)):
+async def upload_csv(file: UploadFile = File(...),target_col: str = "Cover_Type"):
     contents = await file.read()
     csv = pd.read_csv(io.BytesIO(contents), encoding='latin-1')
-    D = StaticDataset()
+    D = StaticDataset(target_col=target_col)######NNNEEEEEDDDDSSS to be changed
     D.input_dataset(csv)
     D.preprocess()
-    input_dim = D.df.shape[1] - 1 if 'Cover_Type' in D.df.columns else D.df.shape[1]
     X_tensor = get_tensor(D.df)
     sample_size = int(0.1 * len(X_tensor))  # Use 10% of the data for training
-    X_tensor = X_tensor[:sample_size]  # Take the first 10% of the data for training
+    state["D"] = D
+    state["X_tensor"] = X_tensor
+    state["sample_size"] = sample_size
 
 
-"""
 @app.post("/vae_training")
-def vae_training(D: StaticDataset):
-    input_dim = D.df.shape[1] - 1 if 'Cover_Type' in D.df.columns else D.df.shape[1]
-    X_tensor = get_tensor(D.df)
-    sample_size = int(0.1 * len(X_tensor))  # Use 10% of the data for training
-    X_tensor = X_tensor[:sample_size]  # Take the first 10% of the data for training
-    print("Training new VAE model...")
+def vae_training():
+    D = state["D"]
+    X_tensor = state["X_tensor"]
+    input_dim = D.df.shape[1] - 1 if "Cover_Type" in D.df.columns else D.df.shape[1]
     dataset = TensorDataset(X_tensor)
     train_loader = DataLoader(dataset, batch_size=512, shuffle=True)
     vae_model = VariationalAutoencoder(input_dim=input_dim, hidden_dim=128, latent_dim=3)
-    train_vae(vae_model, train_loader, epochs=60, lr=0.001)
-    save_model(vae_model, 'vae_model.pth')
-    print("VAE model trained and saved as 'vae_model.pth'.")
+    train_vae(vae_model, train_loader, epochs=20, lr=0.001)
     with torch.no_grad():
-        mu, logvar = vae_model.encode(X_tensor)
-        latent_vectors = mu.numpy()
+        mu, _ = vae_model.encode(X_tensor)
+        state["latent_vectors"] = mu.numpy()
 
+    state["vae_model"] = vae_model
 
 @app.post("/GMM_bic")#needs to be updated
-def gmm_bic(latent_vectors: torch.Tensor):
+def gmm_bic():
+    latent_vectors = state["latent_vectors"]
     gmm_model = GMM()
     labels, gmm = gmm_model.GMM_calc(latent_vectors)
-    print(f"Number of clusters found: {len(np.unique(labels))}")
-    print(f"GMM converged: {gmm.converged_}")
-    print(f"Cluster distribution: {np.bincount(labels)}")
+    state["labels"] = labels
 
-    gmm_model.visual(latent_vectors, labels, gmm)
+    fig = gmm_model.visual(latent_vectors, labels, gmm)  # figure to return
+    return JSONResponse(content=json.loads(fig.to_json()))#turning figure to json for front end
 
 @app.get("/voronoi")
 def voronoi(lanent_space):###########need to make this plotly compatible
+    latent_vectors = state["latent_vectors"]
+    sample_size = state["sample_size"]
+    D = state["D"]
     reducer = umap.UMAP(
         n_components=2,
         n_neighbors=15,  # local neighbourhood size — increase for smoother layout
@@ -104,7 +115,7 @@ def voronoi(lanent_space):###########need to make this plotly compatible
 
     fig = plot_voronoi(coords_2d, cover_labels, class_colour, cover_type_names)
 
-    fig.show()
+    return JSONResponse(content=json.loads(fig.to_json()))
 
 @app.get("/heatmap")
 def heatmap(latent):
@@ -113,4 +124,3 @@ def heatmap(latent):
 @app.get("/particle")
 def particle(latent):
     pass
-    """
