@@ -35,7 +35,6 @@ class GMM():
             X_plot = X
             labels_plot = labels
 
-        # ✅ Convert to plain Python lists — avoids numpy serialization issues
         x_coords = X_plot[:, 0].tolist()
         y_coords = X_plot[:, 1].tolist()
         z_coords = X_plot[:, 2].tolist()

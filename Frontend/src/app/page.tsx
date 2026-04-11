@@ -6,14 +6,17 @@ import axios from "axios";
 
 const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
 
-type Step = "idle" | "training" | "clustering" | "done" | "error";
+type Step = "idle" | "training" | "clustering" | "voronoi" | "done" | "error";
+type Tab = "gmm" | "voronoi";
 
 export default function App() {
   const [uploaded, setUploaded] = useState(false);
   const [step, setStep] = useState<Step>("idle");
   const [gmmPlot, setGmmPlot] = useState<any>(null);
+  const [voronoiPlot, setVoronoiPlot] = useState<any>(null);
   const [targetCol, setTargetCol] = useState("Cover_Type");
   const [logs, setLogs] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<Tab>("gmm");
 
   function addLog(msg: string) {
     console.log(msg);
@@ -23,44 +26,61 @@ export default function App() {
   async function handleRunPipeline() {
     if (!uploaded) return;
     setGmmPlot(null);
+    setVoronoiPlot(null);
     setLogs([]);
 
+    // ── VAE ──────────────────────────────────────────────────────
     try {
       addLog("Starting VAE training...");
       setStep("training");
       const vaeRes = await axios.post("http://localhost:8000/vae_training");
       addLog(`VAE done. Status: ${vaeRes.status}`);
     } catch (e: any) {
-      const msg = e?.response?.data?.detail ?? e?.message ?? String(e);
-      addLog(`VAE FAILED: ${msg}`);
+      addLog(`VAE FAILED: ${e?.response?.data?.detail ?? e?.message}`);
       setStep("error");
       return;
     }
 
+    // ── GMM ──────────────────────────────────────────────────────
     try {
       addLog("Starting GMM clustering...");
       setStep("clustering");
       const gmmRes = await axios.post("http://localhost:8000/GMM_bic");
       addLog(`GMM done. Status: ${gmmRes.status}`);
-      addLog(`Response keys: ${Object.keys(gmmRes.data).join(", ")}`);
-      addLog(`Data traces: ${gmmRes.data?.data?.length ?? "none"}`);
       setGmmPlot(gmmRes.data);
-      setStep("done");
     } catch (e: any) {
-      const msg = e?.response?.data?.detail ?? e?.message ?? String(e);
-      addLog(`GMM FAILED: ${msg}`);
+      addLog(`GMM FAILED: ${e?.response?.data?.detail ?? e?.message}`);
       setStep("error");
       return;
     }
+
+    // ── Voronoi ───────────────────────────────────────────────────
+    try {
+      addLog("Running UMAP + Voronoi...");
+      setStep("voronoi");
+      const vorRes = await axios.get("http://localhost:8000/voronoi");
+      addLog(`Voronoi done. Status: ${vorRes.status}`);
+      setVoronoiPlot(vorRes.data);
+    } catch (e: any) {
+      addLog(`Voronoi FAILED: ${e?.response?.data?.detail ?? e?.message}`);
+      setStep("error");
+      return;
+    }
+
+    setStep("done");
   }
 
   const stepLabel: Record<Step, string> = {
     idle: "Run Pipeline",
     training: "Training VAE...",
     clustering: "Clustering...",
+    voronoi: "Running Voronoi...",
     done: "Run Again",
     error: "Retry",
   };
+
+  const activePlot = activeTab === "gmm" ? gmmPlot : voronoiPlot;
+  const isRunning = step === "training" || step === "clustering" || step === "voronoi";
 
   return (
     <main className="min-h-screen p-5 bg-[#F0EBE1]">
@@ -98,7 +118,7 @@ export default function App() {
           {uploaded && (
             <button
               onClick={handleRunPipeline}
-              disabled={step === "training" || step === "clustering"}
+              disabled={isRunning}
               className="w-full bg-[#0D0D0D] text-[#F0EBE1] py-2 px-4 rounded-lg disabled:opacity-50"
             >
               {stepLabel[step]}
@@ -112,8 +132,11 @@ export default function App() {
             <p className={step !== "idle" && step !== "error" ? "text-green-700" : "text-[#7A7060]"}>
               {step !== "idle" && step !== "error" ? "✓" : "○"} 2. Train VAE
             </p>
-            <p className={step === "clustering" || step === "done" ? "text-green-700" : "text-[#7A7060]"}>
-              {step === "clustering" || step === "done" ? "✓" : "○"} 3. GMM Clustering
+            <p className={["clustering", "voronoi", "done"].includes(step) ? "text-green-700" : "text-[#7A7060]"}>
+              {["clustering", "voronoi", "done"].includes(step) ? "✓" : "○"} 3. GMM Clustering
+            </p>
+            <p className={["voronoi", "done"].includes(step) ? "text-green-700" : "text-[#7A7060]"}>
+              {["voronoi", "done"].includes(step) ? "✓" : "○"} 4. Voronoi
             </p>
           </div>
 
@@ -125,46 +148,58 @@ export default function App() {
         </div>
 
         {/* Right panel */}
-        <div className="bg-[#C8B4A0] rounded-xl p-4 flex items-center justify-center min-h-[600px]">
-          {(step === "idle" || step === "error") && (
-            <p className="text-[#7A7060] text-sm">Run the pipeline to see the GMM plot</p>
-          )}
+        <div className="bg-[#C8B4A0] rounded-xl p-4 flex flex-col gap-3 min-h-[600px]">
 
-          {step === "training" && (
-            <p className="text-[#0D0D0D]">Training VAE... this may take a few minutes</p>
-          )}
-
-          {step === "clustering" && (
-            <p className="text-[#0D0D0D]">Running GMM clustering...</p>
-          )}
-
-          {step === "done" && gmmPlot && (
-            <div style={{ width: "100%", height: "560px", backgroundColor: "white", borderRadius: "8px" }}>
-              <Plot
-                data={gmmPlot.data}
-                layout={{
-                  ...gmmPlot.layout,
-                  autosize: true,
-                  width: undefined,
-                  height: undefined,
-                  paper_bgcolor: "white",
-                  plot_bgcolor: "white",
-                }}
-                style={{ width: "100%", height: "100%" }}
-                useResizeHandler
-                config={{
-                  responsive: true,
-                  scrollZoom: true,
-                }}
-              />
+          {/* Tabs — only show once we have at least one plot */}
+          {(gmmPlot || voronoiPlot) && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setActiveTab("gmm")}
+                className={`py-1 px-4 rounded-lg text-sm ${activeTab === "gmm" ? "bg-[#0D0D0D] text-[#F0EBE1]" : "bg-[#E8E0D0]"}`}
+              >
+                GMM
+              </button>
+              <button
+                onClick={() => setActiveTab("voronoi")}
+                className={`py-1 px-4 rounded-lg text-sm ${activeTab === "voronoi" ? "bg-[#0D0D0D] text-[#F0EBE1]" : "bg-[#E8E0D0]"}`}
+              >
+                Voronoi
+              </button>
             </div>
           )}
 
-          {step === "done" && !gmmPlot && (
-            <p className="text-red-600 text-sm">
-              Step completed but plot data was empty — check logs
-            </p>
-          )}
+          <div className="flex-1 flex items-center justify-center">
+            {isRunning && (
+              <p className="text-[#0D0D0D]">{stepLabel[step]}</p>
+            )}
+
+            {!isRunning && activePlot && (
+              <div style={{ width: "100%", height: "560px", backgroundColor: "white", borderRadius: "8px" }}>
+                <Plot
+                  data={activePlot.data}
+                  layout={{
+                    ...activePlot.layout,
+                    autosize: true,
+                    width: undefined,
+                    height: undefined,
+                    paper_bgcolor: "white",
+                    plot_bgcolor: "white",
+                  }}
+                  style={{ width: "100%", height: "100%" }}
+                  useResizeHandler
+                  config={{ responsive: true, scrollZoom: true }}
+                />
+              </div>
+            )}
+
+            {!isRunning && !activePlot && (
+              <p className="text-[#7A7060] text-sm">
+                {step === "idle" || step === "error"
+                  ? "Run the pipeline to see plots"
+                  : `No ${activeTab} plot yet`}
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </main>
