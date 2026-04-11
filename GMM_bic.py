@@ -26,32 +26,53 @@ class GMM():
         return labels,gmm
 
     def visual(self, X, labels, gmm):
-        print("Starting visualization...")
-        print(f"Data shape: {X.shape}")
-        print(f"Number of clusters: {len(np.unique(labels))}")
-        print(f"Centroid coordinates:\n{gmm.means_}")
-        x_coords = X[:, 0]
-        y_coords = X[:, 1]
-        z_coords = X[:, 2]
+        max_points = 5000
+        if len(X) > max_points:
+            idx = np.random.choice(len(X), max_points, replace=False)
+            X_plot = X[idx]
+            labels_plot = labels[idx]
+        else:
+            X_plot = X
+            labels_plot = labels
+
+        # ✅ Convert to plain Python lists — avoids numpy serialization issues
+        x_coords = X_plot[:, 0].tolist()
+        y_coords = X_plot[:, 1].tolist()
+        z_coords = X_plot[:, 2].tolist()
+        labels_list = labels_plot.tolist()
 
         fig = go.Figure()
 
         fig.add_trace(go.Scatter3d(
-            x=x_coords, y=y_coords, z=z_coords,
+            x=x_coords,
+            y=y_coords,
+            z=z_coords,
             mode='markers',
-            marker=dict(size=4, color=labels, colorscale='Viridis', opacity=0.8,
-                        showscale=True, colorbar=dict(title='Cluster', x=1.0, len=0.5)),
-            text=[f'Cluster: {labels[i]}' for i in range(len(X))],
-            # ✅ simplified hover text — full coords * 580k points was huge
+            marker=dict(
+                size=4,
+                color=labels_list,
+                colorscale='Viridis',
+                opacity=0.8,
+                showscale=True,
+                colorbar=dict(title='Cluster', x=1.0, len=0.5)
+            ),
+            text=[f'Cluster: {labels_list[i]}' for i in range(len(x_coords))],
             hoverinfo='text',
             name='Data Points'
         ))
 
         fig.add_trace(go.Scatter3d(
-            x=gmm.means_[:, 0], y=gmm.means_[:, 1], z=gmm.means_[:, 2],
+            x=gmm.means_[:, 0].tolist(),
+            y=gmm.means_[:, 1].tolist(),
+            z=gmm.means_[:, 2].tolist(),
             mode='markers',
-            marker=dict(size=10, color='red', symbol='diamond',
-                        line=dict(width=3, color='black'), opacity=1.0),
+            marker=dict(
+                size=10,
+                color='red',
+                symbol='diamond',
+                line=dict(width=3, color='black'),
+                opacity=1.0
+            ),
             text=[f'Centroid {i}' for i in range(len(gmm.means_))],
             hoverinfo='text',
             name='Centroids'
@@ -70,10 +91,12 @@ class GMM():
                 zaxis=dict(showbackground=True, backgroundcolor='rgb(230, 230, 230)',
                            gridcolor='white', showline=True, zerolinecolor='white'),
                 camera=dict(eye=dict(x=1.5, y=1.5, z=1.5),
-                            center=dict(x=0, y=0, z=0), up=dict(x=0, y=0, z=1)),
+                            center=dict(x=0, y=0, z=0),
+                            up=dict(x=0, y=0, z=1)),
                 aspectmode='cube'
             ),
-            width=1000, height=800, hovermode='closest', showlegend=True,
+            hovermode='closest',
+            showlegend=True,
             legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01,
                         bgcolor='rgba(255, 255, 255, 0.8)'),
             margin=dict(l=0, r=0, b=0, t=40),

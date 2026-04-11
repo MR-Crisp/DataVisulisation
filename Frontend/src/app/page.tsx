@@ -25,12 +25,11 @@ export default function App() {
     setGmmPlot(null);
     setLogs([]);
 
-    // ── Step 1: VAE training ──────────────────────────────────────
     try {
       addLog("Starting VAE training...");
       setStep("training");
-      const res = await axios.post("http://localhost:8000/vae_training");
-      addLog(`VAE done. Status: ${res.status}`);
+      const vaeRes = await axios.post("http://localhost:8000/vae_training");
+      addLog(`VAE done. Status: ${vaeRes.status}`);
     } catch (e: any) {
       const msg = e?.response?.data?.detail ?? e?.message ?? String(e);
       addLog(`VAE FAILED: ${msg}`);
@@ -38,15 +37,14 @@ export default function App() {
       return;
     }
 
-    // ── Step 2: GMM ───────────────────────────────────────────────
     try {
       addLog("Starting GMM clustering...");
       setStep("clustering");
-      const res = await axios.post("http://localhost:8000/GMM_bic");
-      addLog(`GMM done. Status: ${res.status}`);
-      addLog(`Response keys: ${Object.keys(res.data).join(", ")}`);
-      addLog(`Data traces: ${res.data?.data?.length ?? "none"}`);
-      setGmmPlot(res.data);
+      const gmmRes = await axios.post("http://localhost:8000/GMM_bic");
+      addLog(`GMM done. Status: ${gmmRes.status}`);
+      addLog(`Response keys: ${Object.keys(gmmRes.data).join(", ")}`);
+      addLog(`Data traces: ${gmmRes.data?.data?.length ?? "none"}`);
+      setGmmPlot(gmmRes.data);
       setStep("done");
     } catch (e: any) {
       const msg = e?.response?.data?.detail ?? e?.message ?? String(e);
@@ -89,10 +87,13 @@ export default function App() {
             />
           </div>
 
-          <FileUploader targetCol={targetCol} onUploaded={() => {
-            setUploaded(true);
-            addLog("CSV uploaded successfully");
-          }} />
+          <FileUploader
+            targetCol={targetCol}
+            onUploaded={() => {
+              setUploaded(true);
+              addLog("CSV uploaded successfully");
+            }}
+          />
 
           {uploaded && (
             <button
@@ -104,14 +105,18 @@ export default function App() {
             </button>
           )}
 
-          {/* Step indicators */}
           <div className="text-xs flex flex-col gap-1 w-full">
-            <p className={uploaded ? "text-green-700" : "text-[#7A7060]"}>✓ 1. Upload CSV</p>
-            <p className={step !== "idle" && step !== "error" ? "text-green-700" : "text-[#7A7060]"}>✓ 2. Train VAE</p>
-            <p className={step === "clustering" || step === "done" ? "text-green-700" : "text-[#7A7060]"}>✓ 3. GMM Clustering</p>
+            <p className={uploaded ? "text-green-700" : "text-[#7A7060]"}>
+              {uploaded ? "✓" : "○"} 1. Upload CSV
+            </p>
+            <p className={step !== "idle" && step !== "error" ? "text-green-700" : "text-[#7A7060]"}>
+              {step !== "idle" && step !== "error" ? "✓" : "○"} 2. Train VAE
+            </p>
+            <p className={step === "clustering" || step === "done" ? "text-green-700" : "text-[#7A7060]"}>
+              {step === "clustering" || step === "done" ? "✓" : "○"} 3. GMM Clustering
+            </p>
           </div>
 
-          {/* Live log panel */}
           {logs.length > 0 && (
             <div className="bg-[#0D0D0D] text-green-400 rounded p-2 text-xs font-mono flex flex-col gap-1 max-h-40 overflow-y-auto">
               {logs.map((l, i) => <span key={i}>{l}</span>)}
@@ -124,25 +129,41 @@ export default function App() {
           {(step === "idle" || step === "error") && (
             <p className="text-[#7A7060] text-sm">Run the pipeline to see the GMM plot</p>
           )}
+
           {step === "training" && (
             <p className="text-[#0D0D0D]">Training VAE... this may take a few minutes</p>
           )}
+
           {step === "clustering" && (
             <p className="text-[#0D0D0D]">Running GMM clustering...</p>
           )}
+
           {step === "done" && gmmPlot && (
-            <div style={{ width: "100%", height: "560px" }}>
+            <div style={{ width: "100%", height: "560px", backgroundColor: "white", borderRadius: "8px" }}>
               <Plot
                 data={gmmPlot.data}
-                layout={{ ...gmmPlot.layout, autosize: true, width: undefined, height: undefined }}
+                layout={{
+                  ...gmmPlot.layout,
+                  autosize: true,
+                  width: undefined,
+                  height: undefined,
+                  paper_bgcolor: "white",
+                  plot_bgcolor: "white",
+                }}
                 style={{ width: "100%", height: "100%" }}
                 useResizeHandler
-                config={{ responsive: true }}
+                config={{
+                  responsive: true,
+                  scrollZoom: true,
+                }}
               />
             </div>
           )}
+
           {step === "done" && !gmmPlot && (
-            <p className="text-red-600 text-sm">Step completed but plot data was empty — check logs</p>
+            <p className="text-red-600 text-sm">
+              Step completed but plot data was empty — check logs
+            </p>
           )}
         </div>
       </div>
