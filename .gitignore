@@ -254,3 +254,6 @@ yarn-error.log*
 next-env.d.ts
 
 node_modules/
+
+*.npy
+*.pkl

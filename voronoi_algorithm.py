@@ -79,20 +79,12 @@ def plot_voronoi(coords_2d, labels, class_colour, class_names=None):
     polygons = voronoi_finite_polygons(vor, bounding_box_margin=1.0)
 
     fig = go.Figure()
-    added_to_legend = set()
 
-    for i, poly in enumerate(polygons):
-        if poly is None:
-            continue
-
-        cls = labels[i]
+    unique_classes = np.unique(labels)
+    for cls in unique_classes:
         colour = class_colour[cls]
         label = class_names.get(cls, f"Class {cls}") if class_names else f"Class {cls}"
 
-        show_legend = cls not in added_to_legend
-        added_to_legend.add(cls)
-
-        # Convert to rgba
         if colour.startswith('rgb'):
             nums = colour.replace('rgb(', '').replace(')', '').split(',')
             r, g, b = int(nums[0]), int(nums[1]), int(nums[2])
@@ -100,41 +92,52 @@ def plot_voronoi(coords_2d, labels, class_colour, class_names=None):
             r, g, b = int(colour[1:3], 16), int(colour[3:5], 16), int(colour[5:7], 16)
 
         fill_rgba = f"rgba({r},{g},{b},0.35)"
+        line_rgba = f"rgba({r},{g},{b},0.6)"
+
+        x_all, y_all = [], []
+        for i, poly in enumerate(polygons):
+            if poly is None:
+                continue
+            if labels[i] != cls:
+                continue
+            x_all.extend(poly[:, 0].tolist() + [None])
+            y_all.extend(poly[:, 1].tolist() + [None])
+
+        if not x_all:
+            continue
 
         fig.add_trace(go.Scatter(
-            x=poly[:, 0],
-            y=poly[:, 1],
+            x=x_all,
+            y=y_all,
             fill='toself',
             fillcolor=fill_rgba,
-            line=dict(color='rgba(255,255,255,0.6)', width=0.5),
+            line=dict(color=line_rgba, width=0.5),
             mode='lines',
             name=label,
             legendgroup=str(cls),
-            showlegend=show_legend,
+            showlegend=True,
             hoverinfo='skip'
         ))
 
-    # Scatter points
-    for cls in np.unique(labels):
+    for cls in unique_classes:
         mask = labels == cls
         label = class_names.get(cls, f"Class {cls}") if class_names else f"Class {cls}"
-
         fig.add_trace(go.Scatter(
-            x=coords_2d[mask, 0],
-            y=coords_2d[mask, 1],
+            x=coords_2d[mask, 0].tolist(),
+            y=coords_2d[mask, 1].tolist(),
             mode='markers',
             marker=dict(color=class_colour[cls], size=3, opacity=0.7),
             name=label,
             legendgroup=str(cls),
-            showlegend=False
+            showlegend=False,
+            hoverinfo='skip'
         ))
 
     fig.update_layout(
         title="Voronoi diagram — UMAP latent space",
-        width=500,
-        height=400,
         plot_bgcolor='white',
-        paper_bgcolor='white'
+        paper_bgcolor='white',
+        showlegend=True,
     )
 
     return fig
