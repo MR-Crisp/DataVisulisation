@@ -37,6 +37,7 @@ state = {
     "vae_model": None,
     "latent_vectors": None,
     "labels": None,
+    "feature_names":[]
 }
 
 @app.get("/")
@@ -50,6 +51,7 @@ async def upload_csv(file: UploadFile = File(...),target_col: str = "Cover_Type"
     D = StaticDataset(target_col=target_col)######NNNEEEEEDDDDSSS to be changed
     D.input_dataset(csv)
     D.preprocess()
+    state["feature_names"] = [col for col in D.df.columns if col != target_col]
     X_tensor = get_tensor(D.df)
     sample_size = int(0.1 * len(X_tensor))  # Use 10% of the data for training
     state["D"] = D
@@ -176,9 +178,117 @@ def voronoi():
         return JSONResponse(status_code=500, content={"error": str(e), "detail": error_msg})
 
 @app.get("/heatmap")
-def heatmap(latent):
-    pass
+def heatmap(z1: float, z2: float, z3: float):
+    try:
+        import base64
+        import io
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+
+        vae_model = state["vae_model"]
+        if vae_model is None:
+            return JSONResponse(status_code=400, content={"error": "Train VAE first"})
+
+        device = next(vae_model.parameters()).device
+        z = torch.tensor([[z1, z2, z3]], dtype=torch.float32).to(device)
+
+        with torch.no_grad():
+            features = vae_model.decode(z).cpu().numpy().flatten()
+
+        feature_names = state["feature_names"]
+        n_features = len(features)
+
+        fig, ax = plt.subplots(figsize=(16, 4))
+        reshaped = features.reshape(1, -1)
+        im = ax.imshow(reshaped, cmap='RdYlBu_r', aspect='auto', interpolation='bilinear')
+        ax.set_xticks(np.arange(n_features))
+
+        # Shorten labels
+        short_labels = []
+        for name in feature_names:
+            if 'Horizontal_Distance_To_Hydrology' in name: short_labels.append('HydroDist')
+            elif 'Vertical_Distance_To_Hydrology' in name: short_labels.append('HydroVert')
+            elif 'Horizontal_Distance_To_Roadways' in name: short_labels.append('RoadDist')
+            elif 'Wilderness_Area' in name: short_labels.append(f'Wild_{name.split("_")[-1][:4]}')
+            elif 'Soil_Type' in name: short_labels.append(f'Soil{name.split("_")[-1]}')
+            else: short_labels.append(name[:12])
+
+        ax.set_xticklabels(short_labels, rotation=90, fontsize=8)
+        ax.set_yticks([])
+        plt.colorbar(im, ax=ax, label='Feature Value', shrink=0.8)
+        ax.set_title(f'Generated Sample — Feature Heatmap ({n_features} features)')
+        plt.tight_layout()
+
+        buf = io.BytesIO()
+        fig.savefig(buf, format='png', bbox_inches='tight', dpi=100)
+        buf.seek(0)
+        encoded = base64.b64encode(buf.read()).decode('utf-8')
+        plt.close(fig)
+
+        return JSONResponse(content={"image": f"data:image/png;base64,{encoded}"})
+
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
 
 @app.get("/particle")
-def particle(latent):
-    pass
+def particle(z1: float, z2: float, z3: float):
+    try:
+        vae_model = state["vae_model"]
+        if vae_model is None:
+            return JSONResponse(status_code=400, content={"error": "Train VAE first"})
+
+        device = next(vae_model.parameters()).device
+        z = torch.tensor([[z1, z2, z3]], dtype=torch.float32).to(device)
+
+        with torch.no_grad():
+            features = vae_model.decode(z).cpu().numpy().flatten()
+
+        feature_names = state["feature_names"]
+        n = len(features)
+        angles = np.linspace(0, 2 * np.pi, n, endpoint=False)
+        norm_vals = (features - features.min()) / (features.max() - features.min() + 1e-8)
+        radii = 1 + norm_vals * 0.8
+        x = (radii * np.cos(angles)).tolist()
+        y = (radii * np.sin(angles)).tolist()
+        sizes = (10 + norm_vals * 30).tolist()
+
+        hover_texts = [
+            f"{feature_names[i]}: {features[i]:.3f}" for i in range(n)
+        ]
+
+        import plotly.graph_objects as go
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=x, y=y,
+            mode='markers',
+            marker=dict(size=sizes, color=norm_vals.tolist(),
+                        colorscale='Viridis', showscale=True,
+                        colorbar=dict(title='Feature value')),
+            text=hover_texts,
+            hoverinfo='text'
+        ))
+
+        theta = np.linspace(0, 2 * np.pi, 100)
+        fig.add_trace(go.Scatter(
+            x=np.cos(theta).tolist(), y=np.sin(theta).tolist(),
+            mode='lines', line=dict(color='gray', width=2, dash='dash'),
+            showlegend=False
+        ))
+
+        fig.update_layout(
+            title='Particle System — Each particle is a feature',
+            xaxis=dict(visible=False, range=[-2.2, 2.2]),
+            yaxis=dict(visible=False, range=[-2.2, 2.2]),
+            showlegend=False
+        )
+
+        return JSONResponse(content=json.loads(fig.to_json()))
+
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        return JSONResponse(status_code=500, content={"error": str(e)})
