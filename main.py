@@ -76,97 +76,42 @@ def load_model(path, input_dim, hidden_dim=128, latent_dim=3):
     model.eval()
     return model
 
-"""
-#Load and preprocess the dataset
-file_path = "./covertype.csv"
-testset = kagglehub.load_dataset(
-    KaggleDatasetAdapter.PANDAS,
-    "zsinghrahulk/covertype-forest-cover-types",
-    file_path
-)
+# api_model.py — replace get_vae_config with this
 
-feature_cols = [col for col in testset.columns if col != 'Cover_Type']
-target_col = 'Cover_Type'
-dataset = StaticDataset(feature_cols=feature_cols, target_col=target_col)
-dataset.input_dataset(testset)
-dataset.preprocess() 
+def get_vae_config(D):
+    types = D.types
+    input_dim = D.X.shape[1]
+    latent_dim = 3
 
-X_all = dataset.X
-Y_all = dataset.Y
+    if "small" in types or "simple" in types:# setting hidden dimension block
+        hidden_dim = 64
+    elif "wide" in types or "complex" in types:
+        hidden_dim = 512
+    else:
+        hidden_dim = 128
 
-#Take sample of data for training
-sample_size = int(0.1 * len(X_all))
-X_tensor = torch.tensor(X_all[:sample_size].astype('float32'))
-input_dim = X_tensor.shape[1]
-vae_model = VariationalAutoencoder(input_dim=input_dim, hidden_dim=128, latent_dim=3)
+    if "simple" in types or "small" in types:#hidden layers
+        n_layers = 2
+    elif "complex" in types or "wide" in types:
+        n_layers = 6
+    else:
+        n_layers = 4
 
-#Train/load/save the VAE model
-# train_dataset = TensorDataset(X_tensor)
-# train_loader = DataLoader(train_dataset, batch_size=512, shuffle=True)
-# train_vae(vae_model, train_loader, epochs=60, lr=0.001)
-if os.path.exists('vae_model.pth'):
-    print("Loading existing VAE model...")
-    vae_model = load_model('vae_model.pth', input_dim=input_dim, hidden_dim=128, latent_dim=3)
-else:
-    print("Training new VAE model...")
-    train_dataset = TensorDataset(X_tensor)
-    train_loader = DataLoader(train_dataset, batch_size=512, shuffle=True)
-    train_vae(vae_model, train_loader, epochs=60, lr=0.001)
-    save_model(vae_model, 'vae_model.pth')
-    print("VAE model trained and saved as 'vae_model.pth'.")
+    if "noisy" in types or "sparse" in types:#beta setter
+        beta = 0.1
+    elif "simple" in types:
+        beta = 0.005
+    else:
+        beta = 0.05
 
-#Encode to latent space
-with torch.no_grad():
-    mu, logvar = vae_model.encode(X_tensor)
-    latent_vectors = mu.numpy()
+    dropout = 0.2 if "noisy" in types else 0.0 # dropout only if noisy
 
-
-
-#Visualisation options
-choice = input("Do you want GMM or Voronoi(Type GMM or Vor): ")
-if choice == "GMM":
-    #Apply GMM clustering to the latent space
-    gmm_model = GMM()
-    labels, gmm = gmm_model.GMM_calc(latent_vectors)
-    print(f"Number of clusters found: {len(np.unique(labels))}")
-    print(f"GMM converged: {gmm.converged_}")
-    print(f"Cluster distribution: {np.bincount(labels)}")
-    gmm_model.visual(latent_vectors,labels, gmm)
-
-elif choice == "Vor":
-    # using latent to 2d using umap(dimesionality reduction)
-    # Using full latent vectors (not just first 2 dims) gives a much more
-    # meaningful layout — UMAP preserves local structure across all 3 dims.
-
-    reducer = umap.UMAP(
-        n_components=2,
-        n_neighbors=15,  # local neighbourhood size — increase for smoother layout
-        min_dist=0.1,  # how tightly points cluster — 0.0 = tightest
-        random_state=42,
-        metric='euclidean'
-    )
-    coords_2d = reducer.fit_transform(latent_vectors)  # shape (N, 2)
-
-    #Pull Cover_Type labels aligned to the sample
-    cover_labels = dataset.df['Cover_Type'].values[:sample_size].astype(int)
-    unique_classes = np.unique(cover_labels)
-    n_classes = len(unique_classes)
-
-    # Build a colour map
-    palette = px.colors.qualitative.Bold
-    class_colour = {cls: palette[i % len(palette)] for i, cls in enumerate(unique_classes)}
-    cover_type_names = {
-        1: "Spruce/Fir",
-        2: "Lodgepole Pine",
-        3: "Ponderosa Pine",
-        4: "Cottonwood/Willow",
-        5: "Aspen",
-        6: "Douglas-fir",
-        7: "Krummholz"}
-
-    fig = plot_voronoi(coords_2d,cover_labels,class_colour,cover_type_names)
-
-    fig.show()
-
-
-"""
+    config = {
+        "input_dim": input_dim,
+        "hidden_dim": hidden_dim,
+        "latent_dim": latent_dim,
+        "n_layers": n_layers,
+        "beta": beta,
+        "dropout": dropout,
+    }
+    return config

@@ -5,7 +5,7 @@ import numpy as np
 
 
 class StaticDataset:
-    def __init__(self,feature_cols: list = None, target_col: str = None, max_rows: int = 1000000, min_rows: int = 10000):#NEED TO INPUT TARGET COL
+    def __init__(self,feature_cols: list = None, target_col: str = None, max_rows: int = 1000000, min_rows: int = 10000):
         self.raw_df = None
         self.df = None
         self.scaler = StandardScaler()
@@ -16,6 +16,7 @@ class StaticDataset:
         self.Y = None
         self.MAX_ROWS = max_rows
         self.MIN_ROWS = min_rows
+        self.types = []
 
     def input_dataset(self,location):
         df = location
@@ -35,6 +36,7 @@ class StaticDataset:
         self._allocate_training_size()
         self._normalise()
         self._split_XY()
+        self._set_type()
         return self # not sure what this does yet
 
     def _clean(self):# copied from main
@@ -96,3 +98,43 @@ class StaticDataset:
             print(f"[split] X: {self.X.shape} | Y: {self.Y.shape}")
         else:
             print(f"[split] X: {self.X.shape} | no target column set")
+
+    def _set_type(self): # types arent mutex so can get more than one type
+        n_samples = self.df.shape[0]
+        n_features = self.X.shape[0]
+        #feature composition is checked
+        numeric_ratio = len(self.df.select_dtypes(include=[np.number]).columns) / len(self.df.columns)
+        categorical_ratio = 1 - numeric_ratio
+        #how sparse is the data
+        sparsity = 1.0 - (self.X.nnz / (self.X.shape[0] * self.X.shape[1])) if hasattr(self.X, "nnz") else np.mean(self.X == 0)
+        #variance calculated to check how noisy the data is
+        if hasattr(self.X, "toarray"):
+            X_dense = self.X.toarray()
+        else:
+            X_dense = self.X
+
+        feature_variance = np.var(X_dense, axis=0)
+        low_variance_ratio = np.mean(feature_variance < 1e-3)
+        #now check linear vs complex(or more random/less corelation)
+        corr_matrix = np.corrcoef(X_dense, rowvar=False)
+        avg_corr = np.mean(np.abs(corr_matrix[np.triu_indices_from(corr_matrix, k=1)]))
+        #now sort into a type
+        is_small = n_samples < 5000
+        is_simple = n_features < 20 and avg_corr > 0.3
+        is_wide = n_features > n_samples or n_features > 100#wide as in wide features
+        is_sparse = sparsity > 0.7
+        is_noisy = low_variance_ratio > 0.3
+        is_complex = avg_corr < 0.1 and n_features > 20
+
+        if is_small:
+            self.types.append("small")
+        if is_simple:
+            self.types.append("simple")
+        if is_wide:
+            self.types.append("wide")
+        if is_sparse:
+            self.types.append("sparse")
+        if is_noisy:
+            self.types.append("noisy")
+        if is_complex:
+            self.types.append("complex")
