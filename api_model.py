@@ -1,7 +1,7 @@
 from fastapi import FastAPI, UploadFile, File
 import io
 import json
-
+import os
 from voronoi_algorithm import voronoi_finite_polygons,plot_voronoi
 import umap
 import torch
@@ -11,6 +11,7 @@ import plotly.express as px
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 from fastapi.responses import JSONResponse
+import plotly.graph_objects as go
 
 #from my files
 from main import train_vae,get_tensor
@@ -37,7 +38,9 @@ state = {
     "vae_model": None,
     "latent_vectors": None,
     "labels": None,
-    "feature_names":[]
+    "target_col":None,
+    "feature_names":[],
+    "label_encoder":None
 }
 
 @app.get("/")
@@ -45,42 +48,58 @@ def root():
     return {"message": "Welcome to the API!"}
 
 @app.post("/Upload_CSV")
-async def upload_csv(file: UploadFile = File(...),target_col: str = "Cover_Type"):
+async def upload_csv(file: UploadFile = File(...), target_col: str = "Cover_Type"):
     contents = await file.read()
     csv = pd.read_csv(io.BytesIO(contents), encoding='latin-1')
-    D = StaticDataset(target_col=target_col)######NNNEEEEEDDDDSSS to be changed
+    D = StaticDataset(target_col=target_col)
     D.input_dataset(csv)
     D.preprocess()
-    state["feature_names"] = [col for col in D.df.columns if col != target_col]
-    X_tensor = get_tensor(D.df)
-    sample_size = int(0.1 * len(X_tensor))  # Use 10% of the data for training
+
+    X_tensor = get_tensor(D.df, target_col=target_col)  # ✅ pass target_col
+    sample_size = int(0.1 * len(X_tensor))
+
     state["D"] = D
-    state["X_tensor"] = X_tensor
+    state["X_tensor"] = X_tensor[:sample_size]  # ✅ slice here, not later
     state["sample_size"] = sample_size
-
-
-import os
+    state["feature_names"] = [col for col in D.df.columns if col != target_col]
+    state["target_col"] = target_col
+    
 
 @app.post("/vae_training")
 def vae_training():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     D = state["D"]
     X_tensor = state["X_tensor"]
-    input_dim = D.df.shape[1] - 1 if "Cover_Type" in D.df.columns else D.df.shape[1]
+    target_col = state["target_col"]
+
+    input_dim = D.df.shape[1] - 1 if (target_col and target_col in D.df.columns) else D.df.shape[1]
     model_path = "vae_model.pth"
+    meta_path = "vae_model_meta.npy"
 
     vae_model = VariationalAutoencoder(input_dim=input_dim, hidden_dim=128, latent_dim=3)
 
-    if os.path.exists(model_path):
-        print("Loading saved VAE model...")
-        vae_model.load_state_dict(torch.load(model_path, map_location=device))
-        vae_model.eval()
+    if os.path.exists(model_path) and os.path.exists(meta_path):
+        saved_input_dim = int(np.load(meta_path))
+        if saved_input_dim == input_dim:
+            print(f"Loading saved VAE model (input_dim={input_dim})...")
+            vae_model.load_state_dict(torch.load(model_path, map_location=device))
+            vae_model.eval()
+        else:
+            print(f"input_dim mismatch ({saved_input_dim} vs {input_dim}) — retraining...")
+            for f in ["vae_model.pth", "vae_model_meta.npy", "gmm_model.pkl", "gmm_labels.npy", "umap_coords.npy"]:
+                if os.path.exists(f): os.remove(f)
+            dataset = TensorDataset(X_tensor)
+            train_loader = DataLoader(dataset, batch_size=512, shuffle=True)
+            train_vae(vae_model, train_loader, epochs=20, lr=0.001)
+            torch.save(vae_model.state_dict(), model_path)
+            np.save(meta_path, np.array(input_dim))
     else:
         print("Training new VAE model...")
         dataset = TensorDataset(X_tensor)
         train_loader = DataLoader(dataset, batch_size=512, shuffle=True)
         train_vae(vae_model, train_loader, epochs=20, lr=0.001)
         torch.save(vae_model.state_dict(), model_path)
+        np.save(meta_path, np.array(input_dim))
         print("Model saved.")
 
     with torch.no_grad():
@@ -123,13 +142,23 @@ def voronoi():
         latent_vectors = state["latent_vectors"]
         D = state["D"]
         sample_size = state["sample_size"]
+        target_col = state["target_col"]
         labels_path = "gmm_labels.npy"
 
         if state["labels"] is None and os.path.exists(labels_path):
             state["labels"] = np.load(labels_path)
 
-        if "Cover_Type" in D.df.columns:
-            all_labels = D.df["Cover_Type"].values[:sample_size].astype(int)
+        # ✅ Use target col if present, else fall back to GMM labels
+        if target_col and target_col in D.df.columns:
+            all_labels = D.df[target_col].values[:sample_size]
+            # ✅ Convert to integers if possible, else encode to ints
+            try:
+                all_labels = all_labels.astype(int)
+            except (ValueError, TypeError):
+                from sklearn.preprocessing import LabelEncoder
+                le = LabelEncoder()
+                all_labels = le.fit_transform(all_labels)
+                state["label_encoder"] = le  # save so we can decode later
         else:
             all_labels = state["labels"]
 
@@ -142,7 +171,6 @@ def voronoi():
 
         latent_sample = latent_vectors[idx]
         cover_labels = all_labels[idx]
-        print(f"Sampled {len(idx)} points, latent: {latent_sample.shape}, labels: {cover_labels.shape}")
 
         umap_path = "umap_coords.npy"
         if os.path.exists(umap_path):
@@ -156,33 +184,25 @@ def voronoi():
             np.save(umap_path, coords_2d)
             print(f"UMAP done: {coords_2d.shape}")
 
-        print(f"coords_2d: {coords_2d.shape}, cover_labels: {cover_labels.shape}")
-
         unique_classes = np.unique(cover_labels)
         palette = px.colors.qualitative.Bold
         class_colour = {cls: palette[i % len(palette)] for i, cls in enumerate(unique_classes)}
-        cover_type_names = {
-            1: "Spruce/Fir", 2: "Lodgepole Pine", 3: "Ponderosa Pine",
-            4: "Cottonwood/Willow", 5: "Aspen", 6: "Douglas-fir", 7: "Krummholz",
-        }
 
-        print("Running plot_voronoi...")
-        fig = plot_voronoi(coords_2d, cover_labels, class_colour, cover_type_names)
-        print("Serializing...")
+        # ✅ Generic class names — just use the label value itself
+        class_names = {cls: str(cls) for cls in unique_classes}
+
+        fig = plot_voronoi(coords_2d, cover_labels, class_colour, class_names)
         return JSONResponse(content=json.loads(fig.to_json()))
 
     except Exception as e:
         import traceback
-        error_msg = traceback.format_exc()
-        print(f"VORONOI ERROR:\n{error_msg}")
-        return JSONResponse(status_code=500, content={"error": str(e), "detail": error_msg})
+        print(traceback.format_exc())
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
 @app.get("/heatmap")
 def heatmap(z1: float, z2: float, z3: float):
     try:
-        import base64
-        import io
-        import matplotlib
+        import base64, io, matplotlib
         matplotlib.use('Agg')
         import matplotlib.pyplot as plt
 
@@ -193,6 +213,7 @@ def heatmap(z1: float, z2: float, z3: float):
         device = next(vae_model.parameters()).device
         z = torch.tensor([[z1, z2, z3]], dtype=torch.float32).to(device)
 
+        vae_model.eval()  # ✅ BatchNorm needs eval mode for batch size of 1
         with torch.no_grad():
             features = vae_model.decode(z).cpu().numpy().flatten()
 
@@ -203,18 +224,7 @@ def heatmap(z1: float, z2: float, z3: float):
         reshaped = features.reshape(1, -1)
         im = ax.imshow(reshaped, cmap='RdYlBu_r', aspect='auto', interpolation='bilinear')
         ax.set_xticks(np.arange(n_features))
-
-        # Shorten labels
-        short_labels = []
-        for name in feature_names:
-            if 'Horizontal_Distance_To_Hydrology' in name: short_labels.append('HydroDist')
-            elif 'Vertical_Distance_To_Hydrology' in name: short_labels.append('HydroVert')
-            elif 'Horizontal_Distance_To_Roadways' in name: short_labels.append('RoadDist')
-            elif 'Wilderness_Area' in name: short_labels.append(f'Wild_{name.split("_")[-1][:4]}')
-            elif 'Soil_Type' in name: short_labels.append(f'Soil{name.split("_")[-1]}')
-            else: short_labels.append(name[:12])
-
-        ax.set_xticklabels(short_labels, rotation=90, fontsize=8)
+        ax.set_xticklabels([name[:10] for name in feature_names], rotation=90, fontsize=8)
         ax.set_yticks([])
         plt.colorbar(im, ax=ax, label='Feature Value', shrink=0.8)
         ax.set_title(f'Generated Sample — Feature Heatmap ({n_features} features)')
@@ -244,6 +254,7 @@ def particle(z1: float, z2: float, z3: float):
         device = next(vae_model.parameters()).device
         z = torch.tensor([[z1, z2, z3]], dtype=torch.float32).to(device)
 
+        vae_model.eval()  # ✅ BatchNorm needs eval mode for batch size of 1
         with torch.no_grad():
             features = vae_model.decode(z).cpu().numpy().flatten()
 
@@ -256,26 +267,30 @@ def particle(z1: float, z2: float, z3: float):
         y = (radii * np.sin(angles)).tolist()
         sizes = (10 + norm_vals * 30).tolist()
 
-        hover_texts = [
-            f"{feature_names[i]}: {features[i]:.3f}" for i in range(n)
-        ]
+        hover_texts = [f"{feature_names[i]}: {features[i]:.3f}" for i in range(n)]
 
         import plotly.graph_objects as go
         fig = go.Figure()
         fig.add_trace(go.Scatter(
             x=x, y=y,
             mode='markers',
-            marker=dict(size=sizes, color=norm_vals.tolist(),
-                        colorscale='Viridis', showscale=True,
-                        colorbar=dict(title='Feature value')),
+            marker=dict(
+                size=sizes,
+                color=norm_vals.tolist(),
+                colorscale='Viridis',
+                showscale=True,
+                colorbar=dict(title='Feature value')
+            ),
             text=hover_texts,
             hoverinfo='text'
         ))
 
         theta = np.linspace(0, 2 * np.pi, 100)
         fig.add_trace(go.Scatter(
-            x=np.cos(theta).tolist(), y=np.sin(theta).tolist(),
-            mode='lines', line=dict(color='gray', width=2, dash='dash'),
+            x=np.cos(theta).tolist(),
+            y=np.sin(theta).tolist(),
+            mode='lines',
+            line=dict(color='gray', width=2, dash='dash'),
             showlegend=False
         ))
 

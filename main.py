@@ -60,14 +60,12 @@ def train_vae(model, train_loader, epochs=20, lr=0.001):
 
             print(f'Epoch {epoch}: Total loss = {avg_loss:.4f}, Recon Loss = {avg_recon_loss:.4f}, KL Loss = {avg_kl_loss:.4f}')
 
-def get_tensor(df):
-    #Drop target column if exists
-    if 'Cover_Type' in df.columns:
-        X = df.drop('Cover_Type', axis=1).values.astype('float32')
+def get_tensor(df, target_col=None):
+    if target_col and target_col in df.columns:
+        X = df.drop(target_col, axis=1).values.astype('float32')
     else:
         X = df.values.astype('float32')
-    X_tensor = torch.tensor(X)
-    return X_tensor
+    return torch.tensor(X)
 
 def save_model(model, path):
     torch.save(model.state_dict(), path)
