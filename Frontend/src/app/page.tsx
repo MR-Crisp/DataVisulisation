@@ -193,7 +193,7 @@ export default function App() {
                         <input
                             type="text" value={targetCol}
                             onChange={(e) => setTargetCol(e.target.value)}
-                            className="border border-[#0D0D0D] rounded px-2 py-1 text-sm w-full bg-transparent"
+                            className="border border-[#0D0D0D] rounded px-2 py-1 text-sm w-full bg-transparent text-black"
                             placeholder="e.g. Cover_Type"
                         />
                     </div>
