@@ -101,7 +101,7 @@ class StaticDataset:
 
     def _set_type(self): # types arent mutex so can get more than one type
         n_samples = self.df.shape[0]
-        n_features = self.X.shape[0]
+        n_features = self.X.shape[1]
         #feature composition is checked
         numeric_ratio = len(self.df.select_dtypes(include=[np.number]).columns) / len(self.df.columns)
         categorical_ratio = 1 - numeric_ratio
