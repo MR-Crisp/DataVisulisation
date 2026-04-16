@@ -16,7 +16,6 @@ class GMM():
             bic_values.append(gmm.bic(X))
         return bic_values
 
-
     # Calculate BIC values for 1 to 10 clusters
     def GMM_calc(self,X):
         bic_values = self.calculate_bic_for_gmm(X, max_clusters=20)

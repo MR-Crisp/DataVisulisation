@@ -1,26 +1,10 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import pickle
-import os
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, TensorDataset
-from sklearn.mixture import GaussianMixture
-from sklearn.preprocessing import LabelEncoder, StandardScaler
-import pandas as pd
-import kagglehub
-from kagglehub import KaggleDatasetAdapter
-import plotly.graph_objects as go
-import plotly.express as px
-from scipy.spatial import Voronoi
-import umap
 
 #from my files
 from VAE import VariationalAutoencoder
-from GMM_bic import GMM
-from voronoi_algorithm import voronoi_finite_polygons,plot_voronoi
-from Dataset import StaticDataset
 
 def train_vae(model, train_loader, epochs=60, lr=0.001, beta_target=0.05):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

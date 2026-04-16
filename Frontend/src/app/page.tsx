@@ -294,10 +294,7 @@ export default function App() {
                                     <p className="text-xs text-[#7A7060]">Most likely class</p>
                                     <p className="text-2xl font-bold">{classInfo.predicted_class}</p>
                                 </div>
-                                <div className="text-right">
-                                    <p className="text-xs text-[#7A7060]">Confidence</p>
-                                    <p className="text-2xl font-bold">{(classInfo.confidence * 100).toFixed(0)}%</p>
-                                </div>
+                              
                             </div>
                             <div>
                                 <p className="text-xs text-[#7A7060] mb-1">Nearby class mix</p>

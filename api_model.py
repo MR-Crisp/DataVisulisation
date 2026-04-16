@@ -2,7 +2,6 @@ from fastapi import FastAPI, UploadFile, File, Request
 import io
 import json
 import os
-from voronoi_algorithm import voronoi_finite_polygons,plot_voronoi
 import umap
 import torch
 from torch.utils.data import DataLoader, TensorDataset
@@ -14,10 +13,11 @@ from fastapi.responses import JSONResponse
 import plotly.graph_objects as go
 
 #from my files
-from main import train_vae,get_tensor,get_vae_config
+from util_functions import train_vae,get_vae_config
 from VAE import VariationalAutoencoder
 from GMM_bic import GMM
 from Dataset import StaticDataset
+from voronoi_algorithm import plot_voronoi
 
 
 app = FastAPI()
@@ -121,8 +121,7 @@ async def upload_csv(file: UploadFile = File(...), target_col: str = "Cover_Type
 
     vae_config = get_vae_config(D)
 
-    # Fingerprint based on shape + column names + target col
-    # This uniquely identifies the dataset so the cache is invalidated on new uploads
+
     fingerprint_str = f"{csv.shape}_{list(csv.columns)}_{target_col}"
     fingerprint = hashlib.md5(fingerprint_str.encode()).hexdigest()[:8]
     vae_config["dataset_fingerprint"] = fingerprint
@@ -179,7 +178,7 @@ def vae_training():
                 if os.path.exists(fname): os.remove(fname)
             dataset = TensorDataset(X_tensor)
             train_loader = DataLoader(dataset, batch_size=512, shuffle=True)
-            train_vae(vae_model, train_loader, epochs=120, lr=0.001, beta_target=cfg["beta"])  # ✅ pass beta
+            train_vae(vae_model, train_loader, epochs=120, lr=0.001, beta_target=cfg["beta"])
             torch.save(vae_model.state_dict(), model_path)
             with open(config_path, "w") as f:
                 json.dump(cfg, f)
@@ -187,7 +186,7 @@ def vae_training():
         print("Training new VAE model...")
         dataset = TensorDataset(X_tensor)
         train_loader = DataLoader(dataset, batch_size=512, shuffle=True)
-        train_vae(vae_model, train_loader, epochs=120, lr=0.001, beta_target=cfg["beta"])  # ✅ pass beta
+        train_vae(vae_model, train_loader, epochs=120, lr=0.001, beta_target=cfg["beta"])
         torch.save(vae_model.state_dict(), model_path)
         with open(config_path, "w") as f:
             json.dump(cfg, f)
@@ -224,7 +223,6 @@ def gmm_bic():
 
     state["labels"] = labels
 
-    # Build the plot manually so we can set customdata on the points
     probs = gmm.predict_proba(latent_vectors)
     n_clusters = probs.shape[1]
 
@@ -239,7 +237,6 @@ def gmm_bic():
 
     fig = go.Figure()
 
-    # Main scatter — customdata carries the full latent vector for click handling
     fig.add_trace(go.Scatter3d(
         x=latent_vectors[:, 0].tolist(),
         y=latent_vectors[:, 1].tolist(),
@@ -292,10 +289,8 @@ def voronoi():
         if state["labels"] is None and os.path.exists(labels_path):
             state["labels"] = np.load(labels_path)
 
-        # ✅ Use target col if present, else fall back to GMM labels
         if target_col and target_col in D.df.columns:
             all_labels = D.df[target_col].values[:sample_size]
-            # ✅ Convert to integers if possible, else encode to ints
             try:
                 all_labels = all_labels.astype(int)
             except (ValueError, TypeError):
@@ -332,7 +327,6 @@ def voronoi():
         palette = px.colors.qualitative.Bold
         class_colour = {cls: palette[i % len(palette)] for i, cls in enumerate(unique_classes)}
 
-        # ✅ Generic class names — just use the label value itself
         class_names = {cls: str(cls) for cls in unique_classes}
 
         fig = plot_voronoi(coords_2d, cover_labels, class_colour, class_names)
@@ -485,7 +479,6 @@ def get_config():
 
     response = {"latent_dim": cfg["latent_dim"]}
 
-    # Return actual min/max per latent dimension from the encoded data
     if latent is not None:
         response["latent_ranges"] = [
             {"min": float(latent[:, i].min()), "max": float(latent[:, i].max())}
@@ -500,6 +493,6 @@ def get_config():
 
 @app.post("/label_map")
 async def set_label_map(request: Request):
-    body = await request.json()  # expects {"1": "Spruce/Fir", "2": "Lodgepole Pine", ...}
+    body = await request.json()
     state["label_map"] = {int(k): v for k, v in body.items()}
     return {"message": f"Label map set with {len(state['label_map'])} entries"}
